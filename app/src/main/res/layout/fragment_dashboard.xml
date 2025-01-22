@@ -41,6 +41,7 @@
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/record_button"
         android:layout_width="96dp"
         android:layout_height="96dp"
         style="@style/Widget.MaterialComponents.Button.Icon"
