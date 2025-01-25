@@ -5,4 +5,8 @@
     <string name="title_notifications">Settings</string>
     <string name="logo_description">Logo</string>
     <string name="recording_prompt">"What's on your mind?"</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="title_recording">Recording</string>
 </resources>

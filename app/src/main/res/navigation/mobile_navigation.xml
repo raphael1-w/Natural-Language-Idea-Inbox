@@ -22,4 +22,10 @@
         android:name="com.example.myapplication.ui.notifications.NotificationsFragment"
         android:label="@string/title_notifications"
         tools:layout="@layout/fragment_notifications" />
+
+    <fragment
+        android:id="@+id/navigation_recording"
+        android:name="com.example.myapplication.ui.recording.RecordingFragment"
+        android:label="@string/title_recording"
+        tools:layout="@layout/fragment_recording" />
 </navigation>
