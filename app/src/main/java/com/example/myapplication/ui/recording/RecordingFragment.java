@@ -71,5 +71,4 @@ public class RecordingFragment extends Fragment {
             mediaRecorder = null;
         }
     }
-
 }
