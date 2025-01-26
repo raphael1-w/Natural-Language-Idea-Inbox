@@ -31,8 +31,7 @@ public class DashboardFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        // Show the action bar when the fragment is visible
-        ((AppCompatActivity) getActivity()).getSupportActionBar().show();
+
 
         DashboardViewModel dashboardViewModel =
                 new ViewModelProvider(this).get(DashboardViewModel.class);

@@ -11,10 +11,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.Navigation;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.example.myapplication.databinding.ActivityMainBinding;
+import com.google.android.material.color.DynamicColors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,6 +25,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Apply dynamic colors to the activity
+        DynamicColors.applyToActivitiesIfAvailable(this.getApplication());
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -33,23 +38,23 @@ public class MainActivity extends AppCompatActivity {
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
                 .build();
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+
+        // Get NavHostFragment by ID
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_activity_main);
+        assert navHostFragment != null;
+        NavController navController = navHostFragment.getNavController();
+
         NavigationUI.setupWithNavController(binding.navView, navController);
 
         // Hide bottom navigation bar when recording fragment is visible
         navController.addOnDestinationChangedListener((navController1, navDestination, bundle) -> {
             {
                 if(navDestination.getId() == R.id.navigation_recording) {
-                    BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
-                    bottomNavigationView.setVisibility(View.GONE);
+                    navView.setVisibility(View.GONE);
                 } else {
-                    BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
-                    bottomNavigationView.setVisibility(View.VISIBLE);
+                    navView.setVisibility(View.VISIBLE);
                 }
             }
         });
     }
-
-
 }

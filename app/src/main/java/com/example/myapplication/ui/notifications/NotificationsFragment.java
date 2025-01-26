@@ -19,9 +19,6 @@ public class NotificationsFragment extends Fragment {
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        // Show the action bar when the fragment is visible
-        ((AppCompatActivity) getActivity()).getSupportActionBar().show();
-
         NotificationsViewModel notificationsViewModel =
                 new ViewModelProvider(this).get(NotificationsViewModel.class);
 

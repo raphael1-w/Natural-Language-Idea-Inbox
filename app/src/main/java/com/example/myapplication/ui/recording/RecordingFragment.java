@@ -63,11 +63,6 @@ public class RecordingFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Hide the action bar when the recording fragment is displayed
-        ((AppCompatActivity) getActivity()).getSupportActionBar().hide();
-
-        // Hide botton nav menu when the recording fragment is displayed
-
 
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_recording, container, false);
