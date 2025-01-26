@@ -50,9 +50,5 @@
         <item name="colorOnCustomColor">@color/colorOnCustomColor</item>
         <item name="colorCustomColorContainer">@color/colorCustomColorContainer</item>
         <item name="colorOnCustomColorContainer">@color/colorOnCustomColorContainer</item>
-
-        <item name="android:statusBarColor">@color/md_theme_background</item>
-        <item name="android:windowTranslucentStatus">true</item>
-        <item name="android:windowTranslucentNavigation">true</item>
     </style>
 </resources>
