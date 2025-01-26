@@ -34,36 +34,67 @@
         android:padding="16dp"
         android:layout_gravity="center"/>
 
-<!--        <ImageView-->
-<!--            android:id="@+id/logo"-->
-<!--            android:layout_width="100dp"-->
-<!--            android:layout_height="100dp"-->
-<!--            android:scaleType="fitXY"-->
-<!--            android:padding="16dp"-->
-<!--            android:src="@drawable/ic_robot"-->
-<!--            android:contentDescription="Placeholder icon"-->
-<!--            android:layout_gravity="center"-->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:padding="8dp"
+        android:elevation="4dp"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
-<!--            app:tint="@android:color/black"-->
-<!--            tools:ignore="HardcodedText" />-->
+        <!-- Main Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:gravity="center_vertical"
+            android:background="@drawable/custom_background">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/record_button"
-        android:layout_width="96dp"
-        android:layout_height="96dp"
-        style="@style/Widget.MaterialComponents.Button.Icon"
-        app:icon="@drawable/ic_record"
-        app:iconSize="48dp"
-        app:iconPadding="0dp"
-        android:insetLeft="0dp"
-        android:insetTop="0dp"
-        android:insetRight="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="0dp"
-        android:paddingEnd="0dp"
-        app:iconGravity="textStart"
-        app:cornerRadius="48dp"
-        android:layout_gravity="bottom|center_horizontal"
-        android:gravity="center"
-        />
+            <!-- Camera Button -->
+            <Button
+                style="?attr/materialIconButtonStyle"
+                android:id="@+id/cameraButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/camera_button_description"
+                app:icon="@drawable/ic_photo_camera"
+                />
+
+            <!-- File Button -->
+            <Button
+                style="?attr/materialIconButtonStyle"
+                android:id="@+id/fileButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/file_button_description"
+                app:icon="@drawable/ic_folder"
+                />
+
+            <!-- Text Input Prompt -->
+            <EditText
+                android:id="@+id/inputField"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/hint_text"
+                android:background="@null"
+                android:textSize="16sp"
+                android:padding="8dp"
+                android:inputType="text" />
+
+            <!-- Voice Recording Button -->
+            <Button
+                style="?attr/materialIconButtonFilledTonalStyle"
+                android:id="@+id/record_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/record_button_description"
+                app:icon="@drawable/ic_mic"
+                />
+
+        </LinearLayout>
+
+    </RelativeLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

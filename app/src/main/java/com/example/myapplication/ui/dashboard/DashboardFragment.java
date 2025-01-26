@@ -52,8 +52,11 @@ public class DashboardFragment extends Fragment {
             if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.RECORD_AUDIO}, 200);
             } else {
-                Toast.makeText(requireContext(), "Starting", Toast.LENGTH_SHORT).show();
-                startRecording();
+                if (mediaRecorder != null) {
+                    stopRecording();
+                } else {
+                    startRecording();
+                }
             }
         });
         return root;
@@ -76,13 +79,18 @@ public class DashboardFragment extends Fragment {
         }
     }
 
+    private void stopRecording() {
+        Toast.makeText(getContext(), "Recording stopped", Toast.LENGTH_SHORT).show();
+        mediaRecorder.release();
+        mediaRecorder = null;
+
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
         if (mediaRecorder != null) {
-            Toast.makeText(getContext(), "Recording stopped", Toast.LENGTH_SHORT).show();
-            mediaRecorder.release();
-            mediaRecorder = null;
+            stopRecording();
         }
         binding = null;
     }
