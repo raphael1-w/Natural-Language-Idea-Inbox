@@ -66,7 +66,7 @@ public class DashboardFragment extends Fragment {
         String audioFilePath = Objects.requireNonNull(requireContext().getExternalFilesDir(null)).getAbsolutePath() + "/recording.3gp";
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
         mediaRecorder.setOutputFile(audioFilePath);
         try {
@@ -74,7 +74,6 @@ public class DashboardFragment extends Fragment {
             mediaRecorder.start();
             Toast.makeText(getContext(), "Recording started", Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
-            e.printStackTrace();
             Toast.makeText(getContext(), "Recording failed", Toast.LENGTH_SHORT).show();
         }
     }
