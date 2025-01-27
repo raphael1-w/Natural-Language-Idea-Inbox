@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingBottom="104dp"
+
     android:gravity="center"
     tools:context=".ui.dashboard.DashboardFragment">
 
@@ -41,7 +41,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:padding="8dp"
-        android:elevation="4dp"
         android:clipChildren="false"
         android:clipToPadding="false">
 
@@ -53,6 +52,7 @@
             android:layout_gravity="center_vertical"
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
+            android:elevation="10dp"
             android:background="@drawable/custom_background">
 
             <!-- Camera Button -->

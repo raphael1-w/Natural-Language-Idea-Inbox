@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.view.ViewTreeObserver;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentDashboardBinding;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 
 import java.io.IOException;
@@ -42,6 +44,33 @@ public class DashboardFragment extends Fragment {
         binding = FragmentDashboardBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
+        // The following section allows the capture bar to have the correct bottom margin regardless
+        // of the height of the BottomNavigationView
+
+        // Find your BottomNavigationView in the Activity
+        BottomNavigationView bottomNavigationView = requireActivity().findViewById(R.id.nav_view);
+
+        // Find your element in the Fragment's layout
+        View yourElement = binding.getRoot().findViewById(R.id.main_bar);
+
+        // Add a listener to calculate the height of the BottomNavigationView
+        bottomNavigationView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                // Get the height of the BottomNavigationView
+                int navBarHeight = bottomNavigationView.getHeight();
+
+                // Set the bottom margin for your element
+                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) yourElement.getLayoutParams();
+                params.bottomMargin = navBarHeight + Math.round(8 * getResources().getDisplayMetrics().density); // 8dp above the nav bar
+                yourElement.setLayoutParams(params);
+
+                // Remove the listener to avoid multiple calls
+                bottomNavigationView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }
+        });
+
+        // Set the greeting text
         final TextView textView = binding.promptText;
         dashboardViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
 
@@ -108,7 +137,6 @@ public class DashboardFragment extends Fragment {
             mediaRecorder = null;
         }
     }
-
 
     private void send() {
         //TODO: Implement sending the message

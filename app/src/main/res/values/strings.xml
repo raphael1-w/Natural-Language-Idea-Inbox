@@ -11,6 +11,6 @@
     <string name="title_recording">Recording</string>
     <string name="camera_button_description">Attach photo</string>
     <string name="file_button_description">Attach files</string>
-    <string name="record_button_description">Start recording</string>
+    <string name="record_button_description">Start recording audio ideas or capture text ideas</string>
     <string name="hint_text">What’s on your mind?</string>
 </resources>
