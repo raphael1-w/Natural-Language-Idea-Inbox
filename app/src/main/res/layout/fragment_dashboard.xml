@@ -24,7 +24,6 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-
     <!--Greeting-->
     <TextView
         android:id="@+id/prompt_text"
@@ -102,14 +101,13 @@
             <!-- Voice Recording Button -->
             <Button
                 style="?attr/materialIconButtonFilledTonalStyle"
-                android:id="@+id/record_button"
+                android:id="@+id/commit_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal|bottom"
                 android:contentDescription="@string/record_button_description"
                 app:icon="@drawable/ic_mic"
                 />
-
         </LinearLayout>
 
     </RelativeLayout>
