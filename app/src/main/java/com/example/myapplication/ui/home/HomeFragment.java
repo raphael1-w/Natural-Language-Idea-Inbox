@@ -36,7 +36,6 @@ public class HomeFragment extends Fragment {
         // Get the list of files in the 'recording' directory
         File recordingDir = new File(requireContext().getFilesDir(), "/recordings");
 
-//        Uri uri = Uri.parse(recordingDir.getPath());
         MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
 
         // Generate a string of all file names

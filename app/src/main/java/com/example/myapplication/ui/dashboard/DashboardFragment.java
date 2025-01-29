@@ -38,6 +38,7 @@ public class DashboardFragment extends Fragment {
     private MediaRecorder mediaRecorder;
     boolean commitButtonIsRecord = true;
     String audioFilePath;
+    File recordingDir;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -49,31 +50,11 @@ public class DashboardFragment extends Fragment {
         binding = FragmentDashboardBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        // The following section allows the capture bar to have the correct bottom margin regardless
-        // of the height of the BottomNavigationView
+        // Create the 'recordings' directory in internal storage
+        createRecordingDir();
 
-        // Find your BottomNavigationView in the Activity
-        BottomNavigationView bottomNavigationView = requireActivity().findViewById(R.id.nav_view);
-
-        // Find your element in the Fragment's layout
-        View yourElement = binding.getRoot().findViewById(R.id.main_bar);
-
-        // Add a listener to calculate the height of the BottomNavigationView
-        bottomNavigationView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                // Get the height of the BottomNavigationView
-                int navBarHeight = bottomNavigationView.getHeight();
-
-                // Set the bottom margin for your element
-                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) yourElement.getLayoutParams();
-                params.bottomMargin = navBarHeight + Math.round(8 * getResources().getDisplayMetrics().density); // 8dp above the nav bar
-                yourElement.setLayoutParams(params);
-
-                // Remove the listener to avoid multiple calls
-                bottomNavigationView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-            }
-        });
+        // Calculate the bottom margin for the capture bar, adgusting for the BottomNavigationView
+        calculateBottomMargin();
 
         // Set the greeting text
         final TextView textView = binding.promptText;
@@ -121,17 +102,18 @@ public class DashboardFragment extends Fragment {
         return root;
     }
 
+    private void createRecordingDir() {
+        recordingDir = new File(requireContext().getFilesDir(), "/recordings");
+        if (!recordingDir.exists()) {
+            recordingDir.mkdirs(); // Create the directory if it doesn't exist
+            Log.d("Files", "Directory created at " + recordingDir.getAbsolutePath());
+        }
+    }
+
     private void record() {
         if (mediaRecorder == null) {
             // Get current date-time with alphanumeric values to name the audio file
             String currentDateTime = java.time.LocalDateTime.now().toString().replaceAll("[^a-zA-Z0-9]", "");
-
-            // Create the 'recordings' directory in internal storage
-            File recordingDir = new File(requireContext().getFilesDir(), "/recordings");
-            if (!recordingDir.exists()) {
-                recordingDir.mkdirs(); // Create the directory if it doesn't exist
-                Log.d("Files", "Directory created at " + recordingDir.getAbsolutePath());
-            }
 
             // Create the audio file
             File audioFile = new File(recordingDir, currentDateTime + "_audio.m4a");
@@ -196,6 +178,32 @@ public class DashboardFragment extends Fragment {
     private void send() {
         //TODO: Implement sending the message
         Toast.makeText(getContext(), "Message sent", Toast.LENGTH_SHORT).show();
+    }
+
+    private void calculateBottomMargin() { // Calculate the bottom margin for the capture bar
+
+        // Find your BottomNavigationView in the Activity
+        BottomNavigationView bottomNavigationView = requireActivity().findViewById(R.id.nav_view);
+
+        // Find your element in the Fragment's layout
+        View yourElement = binding.getRoot().findViewById(R.id.main_bar);
+
+        // Add a listener to calculate the height of the BottomNavigationView
+        bottomNavigationView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                // Get the height of the BottomNavigationView
+                int navBarHeight = bottomNavigationView.getHeight();
+
+                // Set the bottom margin for your element
+                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) yourElement.getLayoutParams();
+                params.bottomMargin = navBarHeight + Math.round(8 * getResources().getDisplayMetrics().density); // 8dp above the nav bar
+                yourElement.setLayoutParams(params);
+
+                // Remove the listener to avoid multiple calls
+                bottomNavigationView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }
+        });
     }
 
     @Override
