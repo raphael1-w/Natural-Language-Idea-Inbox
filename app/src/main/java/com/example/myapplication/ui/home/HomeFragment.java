@@ -1,17 +1,15 @@
 package com.example.myapplication.ui.home;
 
-import android.annotation.SuppressLint;
-import android.media.MediaMetadataRetriever;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -29,8 +27,6 @@ import java.util.List;
 public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
-    private RecyclerView recyclerView;
-    private RecordingAdapter recordingAdapter;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -44,15 +40,15 @@ public class HomeFragment extends Fragment {
         calculateBottomMargin();
 
         // Reference RecyclerView from the binding
-        recyclerView = binding.recyclerView;
+        RecyclerView recyclerView = binding.recyclerView;
 
         // Get the list of files in the 'recording' directory
         File recordingDir = new File(requireContext().getFilesDir(), "/recordings");
 
         // Set up the RecyclerView
-        List<File> files2 = getFilesFromDirectory(recordingDir);
-        if (!files2.isEmpty()) {
-            recordingAdapter = new RecordingAdapter(files2);
+        List<File> files = getFilesFromDirectory(recordingDir);
+        if (!files.isEmpty()) {
+            RecordingAdapter recordingAdapter = new RecordingAdapter(files);
             recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
             recyclerView.setAdapter(recordingAdapter);
         } else {
@@ -76,7 +72,7 @@ public class HomeFragment extends Fragment {
         BottomNavigationView bottomNavigationView = requireActivity().findViewById(R.id.nav_view);
 
         // Find your element in the Fragment's layout
-        View yourElement = binding.getRoot().findViewById(R.id.linearLayoutIdeas);
+        View yourElement = binding.getRoot().findViewById(R.id.recyclerView);
 
         // Add a listener to calculate the height of the BottomNavigationView
         bottomNavigationView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
