@@ -2,8 +2,10 @@ package com.example.myapplication.ui.dashboard;
 
 import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.os.Environment;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,6 +28,7 @@ import com.example.myapplication.databinding.FragmentDashboardBinding;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -33,6 +36,7 @@ public class DashboardFragment extends Fragment {
     private FragmentDashboardBinding binding;
     private MediaRecorder mediaRecorder;
     boolean commitButtonIsRecord = true;
+    String audioFilePath;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -118,23 +122,55 @@ public class DashboardFragment extends Fragment {
 
     private void record() {
         if (mediaRecorder == null) {
-            String audioFilePath = Objects.requireNonNull(requireContext().getExternalFilesDir(null)).getAbsolutePath() + "/recording.3gp";
-            mediaRecorder = new MediaRecorder();
+            // Get current date-time with alphanumeric values to name the audio file
+            String currentDateTime = java.time.LocalDateTime.now().toString().replaceAll("[^a-zA-Z0-9]", "");
+
+            // Create the 'recordings' directory in internal storage
+            File recordingDir = new File(requireContext().getFilesDir(), "recordings");
+            if (!recordingDir.exists()) {
+                recordingDir.mkdirs(); // Create the directory if it doesn't exist
+                Log.d("Files", "Directory created at " + recordingDir.getAbsolutePath());
+            }
+
+            // Create the audio file
+            File audioFile = new File(recordingDir, currentDateTime + "_audio.m4a");
+            audioFilePath = audioFile.getAbsolutePath();
+            Log.d("Files", "Audio file created at " + audioFilePath);
+
+            // Prepare the media recorder
+            mediaRecorder = new MediaRecorder(requireContext());
             mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            mediaRecorder.setAudioEncodingBitRate(16 * 44100);
+            mediaRecorder.setAudioSamplingRate(44100);
             mediaRecorder.setOutputFile(audioFilePath);
-            try {
+
+            try { // Start recording
                 mediaRecorder.prepare();
                 mediaRecorder.start();
                 Toast.makeText(getContext(), "Recording started", Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
                 Toast.makeText(getContext(), "Recording failed", Toast.LENGTH_SHORT).show();
+                Log.e("Recording", "Recording failed", e);
             }
-        } else {
+        } else { // Stop recording
             Toast.makeText(getContext(), "Recording stopped", Toast.LENGTH_SHORT).show();
-            mediaRecorder.release();
-            mediaRecorder = null;
+            try {
+                mediaRecorder.stop();
+                mediaRecorder.reset();
+                mediaRecorder.release();
+                mediaRecorder = null;
+
+                Log.d("Files", "Audio file saved to " + audioFilePath);
+            } catch (RuntimeException e) {
+                // if no valid audio/ video data has been received when stop() is called
+                // This happens if stop() is called immediately after start()
+
+                // Clean up the output file
+                new File(audioFilePath).delete();
+            }
+
         }
     }
 
@@ -147,8 +183,10 @@ public class DashboardFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
 
+        // TODO: Warn the user if they are about to lose their recording
         // Release the media recorder if it is currently active
         if (mediaRecorder != null) {
+            mediaRecorder.reset();
             mediaRecorder.release();
             mediaRecorder = null;
         }
