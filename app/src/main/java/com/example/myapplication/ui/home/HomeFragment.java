@@ -1,6 +1,10 @@
 package com.example.myapplication.ui.home;
 
+import android.annotation.SuppressLint;
+import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.myapplication.databinding.FragmentHomeBinding;
 
 import java.io.File;
+import java.util.Arrays;
 
 public class HomeFragment extends Fragment {
 
@@ -31,12 +36,25 @@ public class HomeFragment extends Fragment {
         // Get the list of files in the 'recording' directory
         File recordingDir = new File(requireContext().getFilesDir(), "/recordings");
 
+//        Uri uri = Uri.parse(recordingDir.getPath());
+        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
+
         // Generate a string of all file names
-        StringBuilder fileList = new StringBuilder("Files in recording directory:\n");
+        StringBuilder fileList = new StringBuilder("Files in recordings directory:\n");
         File[] files = recordingDir.listFiles();
+        Log.d("HomeFragment", "Files: " + Arrays.toString(files));
         if (files != null && files.length > 0) {
             for (File file : files) {
                 fileList.append(file.getName()).append("\n");
+                // append the recording duration
+                metadataRetriever.setDataSource(file.getPath());
+                String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                // convert duration to minutes and seconds in MM:SS:MS format
+                @SuppressLint("DefaultLocale") String formattedDuration = String.format("%02d:%02d:%03d",
+                        Integer.parseInt(duration) / 60000,
+                        (Integer.parseInt(duration) % 60000) / 1000,
+                        Integer.parseInt(duration) % 1000);
+                fileList.append("Duration: ").append(formattedDuration).append("\n");
             }
         } else {
             fileList.append("No files found.");

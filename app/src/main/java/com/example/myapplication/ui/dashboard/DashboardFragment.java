@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.dashboard;
 
+import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Environment;
@@ -151,26 +152,44 @@ public class DashboardFragment extends Fragment {
                 mediaRecorder.start();
                 Toast.makeText(getContext(), "Recording started", Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
-                Toast.makeText(getContext(), "Recording failed", Toast.LENGTH_SHORT).show();
                 Log.e("Recording", "Recording failed", e);
             }
         } else { // Stop recording
-            Toast.makeText(getContext(), "Recording stopped", Toast.LENGTH_SHORT).show();
             try {
                 mediaRecorder.stop();
                 mediaRecorder.reset();
                 mediaRecorder.release();
                 mediaRecorder = null;
 
-                Log.d("Files", "Audio file saved to " + audioFilePath);
+                cleanUp(audioFilePath); // Automatically delete the recording if it is too short
             } catch (RuntimeException e) {
-                // if no valid audio/ video data has been received when stop() is called
+                // if no valid audio data has been received when stop() is called
                 // This happens if stop() is called immediately after start()
 
                 // Clean up the output file
+                mediaRecorder.reset();
+                mediaRecorder.release();
+                mediaRecorder = null;
                 new File(audioFilePath).delete();
-            }
 
+                Log.e("Recording", "Deleted recording", e);
+            }
+            Toast.makeText(getContext(), "Recording stopped", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void cleanUp(String audioFilePath) {
+        // Get the duration of the recording
+        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
+        metadataRetriever.setDataSource(audioFilePath);
+        String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+
+        // If recording is less than 600 milliseconds, delete the file
+        if (Integer.parseInt(duration) < 600) {
+            new File(audioFilePath).delete();
+            Log.d("Recording", "Deleted recording: " + audioFilePath);
+        } else {
+            Log.d("Files", "Audio file saved to " + audioFilePath);
         }
     }
 
