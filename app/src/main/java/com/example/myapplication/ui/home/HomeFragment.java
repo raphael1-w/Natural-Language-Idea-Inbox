@@ -2,26 +2,35 @@ package com.example.myapplication.ui.home;
 
 import android.annotation.SuppressLint;
 import android.media.MediaMetadataRetriever;
-import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentHomeBinding;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
+    private RecyclerView recyclerView;
+    private RecordingAdapter recordingAdapter;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -31,41 +40,60 @@ public class HomeFragment extends Fragment {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        final TextView textView = binding.textHome;
+        // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
+        calculateBottomMargin();
+
+        // Reference RecyclerView from the binding
+        recyclerView = binding.recyclerView;
 
         // Get the list of files in the 'recording' directory
         File recordingDir = new File(requireContext().getFilesDir(), "/recordings");
 
-        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-
-        // Generate a string of all file names
-        StringBuilder fileList = new StringBuilder("Files in recordings directory:\n");
-        File[] files = recordingDir.listFiles();
-        Log.d("HomeFragment", "Files: " + Arrays.toString(files));
-        if (files != null && files.length > 0) {
-            for (File file : files) {
-                fileList.append(file.getName()).append("\n");
-                // append the recording duration
-                metadataRetriever.setDataSource(file.getPath());
-                String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-                // convert duration to minutes and seconds in MM:SS:MS format
-                @SuppressLint("DefaultLocale") String formattedDuration = String.format("%02d:%02d:%03d",
-                        Integer.parseInt(duration) / 60000,
-                        (Integer.parseInt(duration) % 60000) / 1000,
-                        Integer.parseInt(duration) % 1000);
-                fileList.append("Duration: ").append(formattedDuration).append("\n");
-            }
+        // Set up the RecyclerView
+        List<File> files2 = getFilesFromDirectory(recordingDir);
+        if (!files2.isEmpty()) {
+            recordingAdapter = new RecordingAdapter(files2);
+            recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+            recyclerView.setAdapter(recordingAdapter);
         } else {
-            fileList.append("No files found.");
+            Toast.makeText(requireContext(), "No recordings found", Toast.LENGTH_SHORT).show();
         }
 
-        // Update the ViewModel with the list of files
-        homeViewModel.setText(fileList.toString());
-
-        // Observe the ViewModel's text and set it to the TextView
-        homeViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
-
         return root;
+    }
+
+    private List<File> getFilesFromDirectory(File dir) {
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            return files != null ? new ArrayList<>(Arrays.asList(files)) : new ArrayList<>();
+        }
+        return new ArrayList<>();
+    }
+
+    private void calculateBottomMargin() { // Calculate the bottom margin for the capture bar
+
+        // Find your BottomNavigationView in the Activity
+        BottomNavigationView bottomNavigationView = requireActivity().findViewById(R.id.nav_view);
+
+        // Find your element in the Fragment's layout
+        View yourElement = binding.getRoot().findViewById(R.id.linearLayoutIdeas);
+
+        // Add a listener to calculate the height of the BottomNavigationView
+        bottomNavigationView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                // Get the height of the BottomNavigationView
+                int navBarHeight = bottomNavigationView.getHeight();
+
+                // Set the bottom margin for your element
+                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) yourElement.getLayoutParams();
+                params.bottomMargin = navBarHeight + Math.round(8 * getResources().getDisplayMetrics().density); // 8dp above the nav bar
+                yourElement.setLayoutParams(params);
+
+                // Remove the listener to avoid multiple calls
+                bottomNavigationView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }
+        });
     }
 
     @Override

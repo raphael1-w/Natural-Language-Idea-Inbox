@@ -53,7 +53,7 @@ public class DashboardFragment extends Fragment {
         // Create the 'recordings' directory in internal storage
         createRecordingDir();
 
-        // Calculate the bottom margin for the capture bar, adgusting for the BottomNavigationView
+        // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
         calculateBottomMargin();
 
         // Set the greeting text
