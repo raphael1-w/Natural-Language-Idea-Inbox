@@ -126,7 +126,7 @@ public class DashboardFragment extends Fragment {
             String currentDateTime = java.time.LocalDateTime.now().toString().replaceAll("[^a-zA-Z0-9]", "");
 
             // Create the 'recordings' directory in internal storage
-            File recordingDir = new File(requireContext().getFilesDir(), "recordings");
+            File recordingDir = new File(requireContext().getFilesDir(), "/recordings");
             if (!recordingDir.exists()) {
                 recordingDir.mkdirs(); // Create the directory if it doesn't exist
                 Log.d("Files", "Directory created at " + recordingDir.getAbsolutePath());
