@@ -55,6 +55,7 @@ public class HomeFragment extends Fragment {
             Toast.makeText(requireContext(), "No recordings found", Toast.LENGTH_SHORT).show();
         }
 
+
         return root;
     }
 

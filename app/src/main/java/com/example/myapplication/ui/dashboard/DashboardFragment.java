@@ -23,7 +23,13 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.room.Room;
 
+import com.example.myapplication.AppDatabase;
+import com.example.myapplication.AttachmentsDao;
+import com.example.myapplication.Converters;
+import com.example.myapplication.IdeasDao;
+import com.example.myapplication.Ideas_table;
 import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentDashboardBinding;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -31,6 +37,7 @@ import com.google.android.material.button.MaterialButton;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 import java.util.Objects;
 
 public class DashboardFragment extends Fragment {
@@ -38,7 +45,10 @@ public class DashboardFragment extends Fragment {
     private MediaRecorder mediaRecorder;
     boolean commitButtonIsRecord = true;
     String audioFilePath;
+    Date date = new Date();
     File recordingDir;
+    IdeasDao ideasDao;
+    AttachmentsDao attachmentsDao;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -49,6 +59,18 @@ public class DashboardFragment extends Fragment {
 
         binding = FragmentDashboardBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
+
+        // Initialize database instance
+        AppDatabase db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
+        ideasDao = db.ideasDao();
+        attachmentsDao = db.attachmentsDao();
+
+        // Log output the whole ideas table
+        new Thread(() -> {
+            for (Ideas_table idea : ideasDao.getAll()) {
+                Log.d("Database", "Idea: " + idea.title + " created at " + idea.created_at + "type: " + idea.type);
+            }
+        }).start();
 
         // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
         calculateBottomMargin();
@@ -101,6 +123,9 @@ public class DashboardFragment extends Fragment {
 
     private void record() {
         if (mediaRecorder == null) {
+            // Set the current date-time for database entry
+            date.setTime(System.currentTimeMillis());
+
             // Get current date-time with alphanumeric values to name the audio file
             String currentDateTime = java.time.LocalDateTime.now().toString().replaceAll("[^a-zA-Z0-9]", "");
 
@@ -133,7 +158,12 @@ public class DashboardFragment extends Fragment {
                 mediaRecorder.release();
                 mediaRecorder = null;
 
-                cleanUp(audioFilePath); // Automatically delete the recording if it is too short
+                boolean isAudioFileSaved = cleanUp(audioFilePath); // Automatically delete the recording if it is too short
+
+                // Add audio idea entry to database if audio file is not deleted
+                if (!isAudioFileSaved) {
+                    insertToDatabase(audioFilePath, date, "audio", false);
+                }
             } catch (RuntimeException e) {
                 // if no valid audio data has been received when stop() is called
                 // This happens if stop() is called immediately after start()
@@ -150,7 +180,7 @@ public class DashboardFragment extends Fragment {
         }
     }
 
-    private void cleanUp(String audioFilePath) {
+    private boolean cleanUp(String audioFilePath) {
         // Get the duration of the recording
         MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
         metadataRetriever.setDataSource(audioFilePath);
@@ -160,9 +190,31 @@ public class DashboardFragment extends Fragment {
         if (Integer.parseInt(duration) < 600) {
             new File(audioFilePath).delete();
             Log.d("Recording", "Deleted recording: " + audioFilePath);
+            return true;
         } else {
             Log.d("Files", "Audio file saved to " + audioFilePath);
+            return false;
         }
+    }
+
+    private void insertToDatabase(String audioFilePath, Date date, String type, boolean hasAttachments) {
+        // Get the file name from the audio file path
+        String fileName = audioFilePath.substring(audioFilePath.lastIndexOf("/") + 1);
+
+        // Create a new idea object
+        Ideas_table idea = new Ideas_table();
+        idea.title = fileName;
+        idea.type = type;
+        idea.created_at = date;
+        idea.updated_at = date;
+        idea.recording_file_path = audioFilePath;
+        idea.has_attachments = hasAttachments;
+
+        // Insert the idea into the database in a new thread
+        new Thread(() -> {
+            ideasDao.insertAll(idea);
+            Log.d("Database", "Inserted idea: " + idea.title);
+        }).start();
     }
 
     private void send() {
