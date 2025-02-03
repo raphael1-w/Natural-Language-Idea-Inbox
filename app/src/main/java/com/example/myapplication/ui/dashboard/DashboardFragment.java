@@ -50,9 +50,6 @@ public class DashboardFragment extends Fragment {
         binding = FragmentDashboardBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        // Create the 'recordings' directory in internal storage
-        createRecordingDir();
-
         // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
         calculateBottomMargin();
 
@@ -102,20 +99,13 @@ public class DashboardFragment extends Fragment {
         return root;
     }
 
-    private void createRecordingDir() {
-        recordingDir = new File(requireContext().getFilesDir(), "/recordings");
-        if (!recordingDir.exists()) {
-            recordingDir.mkdirs(); // Create the directory if it doesn't exist
-            Log.d("Files", "Directory created at " + recordingDir.getAbsolutePath());
-        }
-    }
-
     private void record() {
         if (mediaRecorder == null) {
             // Get current date-time with alphanumeric values to name the audio file
             String currentDateTime = java.time.LocalDateTime.now().toString().replaceAll("[^a-zA-Z0-9]", "");
 
             // Create the audio file
+            recordingDir = new File(requireContext().getFilesDir(), "/recordings");
             File audioFile = new File(recordingDir, currentDateTime + "_audio.m4a");
             audioFilePath = audioFile.getAbsolutePath();
             Log.d("Files", "Audio file created at " + audioFilePath);
