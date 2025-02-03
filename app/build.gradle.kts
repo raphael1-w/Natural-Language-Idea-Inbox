@@ -44,7 +44,13 @@ dependencies {
     implementation(libs.navigation.fragment)
     implementation(libs.navigation.ui)
     implementation(libs.material.v150)
+    implementation(libs.room.common)
+    implementation(libs.room.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
+    val room_version = "2.6.1"
+    annotationProcessor(libs.room.compiler)
+    testImplementation(libs.room.testing)
 }

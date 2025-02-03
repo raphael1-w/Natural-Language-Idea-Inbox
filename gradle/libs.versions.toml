@@ -12,6 +12,8 @@ material3 = "150"
 materialVersion = "<1.5.0>"
 navigationFragment = "2.6.0"
 navigationUi = "2.6.0"
+roomCommon = "2.6.1"
+roomRuntime = "2.6.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -26,6 +28,10 @@ material-v150 = { module = "com.google.android.material:material", version.ref =
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
+room-common = { group = "androidx.room", name = "room-common", version.ref = "roomCommon" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCommon" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntime" }
+room-testing = { module = "androidx.room:room-testing", version.ref = "roomCommon" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
