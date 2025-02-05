@@ -65,12 +65,12 @@ public class DashboardFragment extends Fragment {
         ideasDao = db.ideasDao();
         attachmentsDao = db.attachmentsDao();
 
-        // Log output the whole ideas table
-        new Thread(() -> {
-            for (Ideas_table idea : ideasDao.getAll()) {
-                Log.d("Database", "Idea: " + idea.title + " created at " + idea.created_at + "type: " + idea.type);
-            }
-        }).start();
+        // Log output the whole ideas table when the fragment is created
+//        new Thread(() -> {
+//            for (Ideas_table idea : ideasDao.getAll()) {
+//                Log.d("Database", "Idea: " + idea.title + " created at " + idea.created_at + "type: " + idea.type);
+//            }
+//        }).start();
 
         // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
         calculateBottomMargin();

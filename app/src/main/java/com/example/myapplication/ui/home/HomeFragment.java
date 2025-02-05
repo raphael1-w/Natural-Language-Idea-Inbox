@@ -14,7 +14,11 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.room.Room;
 
+import com.example.myapplication.AppDatabase;
+import com.example.myapplication.IdeasDao;
+import com.example.myapplication.Ideas_table;
 import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentHomeBinding;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -27,6 +31,7 @@ import java.util.List;
 public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
+    private IdeasDao ideasDao;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -36,36 +41,39 @@ public class HomeFragment extends Fragment {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
+        // Initialize database instance
+        AppDatabase db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
+        ideasDao = db.ideasDao();
+
         // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
         calculateBottomMargin();
 
         // Reference RecyclerView from the binding
         RecyclerView recyclerView = binding.recyclerView;
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
-        // Get the list of files in the 'recording' directory
-        File recordingDir = new File(requireContext().getFilesDir(), "/recordings");
-
-        // Set up the RecyclerView
-        List<File> files = getFilesFromDirectory(recordingDir);
-        if (!files.isEmpty()) {
-            RecordingAdapter recordingAdapter = new RecordingAdapter(files);
-            recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-            recyclerView.setAdapter(recordingAdapter);
-        } else {
-            Toast.makeText(requireContext(), "No recordings found", Toast.LENGTH_SHORT).show();
-        }
-
+        // Load ideas from the database
+        loadIdeas(recyclerView);
 
         return root;
     }
 
-    private List<File> getFilesFromDirectory(File dir) {
-        if (dir.exists() && dir.isDirectory()) {
-            File[] files = dir.listFiles();
-            return files != null ? new ArrayList<>(Arrays.asList(files)) : new ArrayList<>();
-        }
-        return new ArrayList<>();
+    private void loadIdeas(RecyclerView recyclerView) {
+        // Get all ideas from the database
+        new Thread (() -> {
+            List<Ideas_table> ideas = ideasDao.getAll();
+
+            // Update the UI on the main thread
+            requireActivity().runOnUiThread(() -> {
+                // Create an adapter for the RecyclerView
+                IdeasAdapter adapter = new IdeasAdapter(ideas);
+
+                // Set the adapter for the RecyclerView
+                recyclerView.setAdapter(adapter);
+            });
+        }).start();
     }
+
 
     private void calculateBottomMargin() { // Calculate the bottom margin for the capture bar
 
