@@ -7,7 +7,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.myapplication.R;
-import com.example.myapplication.Ideas_table;
+import com.example.myapplication.database.Ideas_table;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;

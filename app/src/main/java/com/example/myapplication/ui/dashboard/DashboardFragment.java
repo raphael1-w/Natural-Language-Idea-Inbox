@@ -3,7 +3,6 @@ package com.example.myapplication.ui.dashboard;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.Environment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -25,11 +24,10 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.room.Room;
 
-import com.example.myapplication.AppDatabase;
-import com.example.myapplication.AttachmentsDao;
-import com.example.myapplication.Converters;
-import com.example.myapplication.IdeasDao;
-import com.example.myapplication.Ideas_table;
+import com.example.myapplication.database.AppDatabase;
+import com.example.myapplication.database.AttachmentsDao;
+import com.example.myapplication.database.IdeasDao;
+import com.example.myapplication.database.Ideas_table;
 import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentDashboardBinding;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -38,7 +36,6 @@ import com.google.android.material.button.MaterialButton;
 import java.io.File;
 import java.io.IOException;
 import java.util.Date;
-import java.util.Objects;
 
 public class DashboardFragment extends Fragment {
     private FragmentDashboardBinding binding;
