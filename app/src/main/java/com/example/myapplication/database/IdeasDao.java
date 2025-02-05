@@ -13,6 +13,9 @@ public interface IdeasDao {
     @Query("SELECT * FROM Ideas")
     List<Ideas_table> getAll();
 
+    @Query("SELECT * FROM Ideas ORDER BY created_at DESC")
+    List<Ideas_table> getAllNewestFirst();
+
     @Query("SELECT * FROM Ideas WHERE created_at BETWEEN :start AND :end")
     List<Ideas_table> getIdeasBetweenDates(Date start, Date end);
 

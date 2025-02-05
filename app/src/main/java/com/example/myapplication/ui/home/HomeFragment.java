@@ -20,6 +20,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentHomeBinding;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import java.util.Collections;
 import java.util.List;
 
 public class HomeFragment extends Fragment {
@@ -55,7 +56,7 @@ public class HomeFragment extends Fragment {
     private void loadIdeas(RecyclerView recyclerView) {
         // Get all ideas from the database
         new Thread (() -> {
-            List<Ideas_table> ideas = ideasDao.getAll();
+            List<Ideas_table> ideas = ideasDao.getAllNewestFirst();
 
             // Update the UI on the main thread
             requireActivity().runOnUiThread(() -> {
