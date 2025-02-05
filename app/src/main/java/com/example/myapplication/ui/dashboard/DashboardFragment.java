@@ -159,7 +159,10 @@ public class DashboardFragment extends Fragment {
 
                 // Add audio idea entry to database if audio file is not deleted
                 if (!isAudioFileSaved) {
-                    insertToDatabase(audioFilePath, date, "audio", false);
+                    // Get the file name from the audio file path
+                    String fileName = audioFilePath.substring(audioFilePath.lastIndexOf("/") + 1);
+
+                    insertToDatabase(fileName, date, "audio", audioFilePath, false);
                 }
             } catch (RuntimeException e) {
                 // if no valid audio data has been received when stop() is called
@@ -194,17 +197,21 @@ public class DashboardFragment extends Fragment {
         }
     }
 
-    private void insertToDatabase(String audioFilePath, Date date, String type, boolean hasAttachments) {
-        // Get the file name from the audio file path
-        String fileName = audioFilePath.substring(audioFilePath.lastIndexOf("/") + 1);
+    private void insertToDatabase(String title, Date date, String type, String filePath, boolean hasAttachments) {
 
         // Create a new idea object
         Ideas_table idea = new Ideas_table();
-        idea.title = fileName;
+        idea.title = title;
         idea.type = type;
         idea.created_at = date;
         idea.updated_at = date;
-        idea.recording_file_path = audioFilePath;
+
+        if (type.equals("audio")) {
+            idea.recording_file_path = filePath;
+        } else { // Type is text
+            idea.text_file_path = filePath;
+        }
+
         idea.has_attachments = hasAttachments;
 
         // Insert the idea into the database in a new thread
