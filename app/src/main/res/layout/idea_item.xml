@@ -23,6 +23,12 @@
         android:text="@string/type" />
 
     <TextView
+        android:id="@+id/ideaDuration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/duration" />
+
+    <TextView
         android:id="@+id/ideaTags"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

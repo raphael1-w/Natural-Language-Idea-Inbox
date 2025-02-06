@@ -58,6 +58,13 @@ public class HomeFragment extends Fragment {
         new Thread (() -> {
             List<Ideas_table> ideas = ideasDao.getAllNewestFirst();
 
+            // If list is not empty, remove TextView
+            if (!ideas.isEmpty()) {
+                requireActivity().runOnUiThread(() -> {
+                    binding.emptyView.setVisibility(View.GONE);
+                });
+            }
+
             // Update the UI on the main thread
             requireActivity().runOnUiThread(() -> {
                 // Create an adapter for the RecyclerView

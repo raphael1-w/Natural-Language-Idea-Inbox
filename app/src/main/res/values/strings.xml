@@ -17,4 +17,6 @@
     <string name="tags">Tags:</string>
     <string name="type">Type:</string>
     <string name="idea_title">Idea Title</string>
+    <string name="no_ideas">No ideas yet!</string>
+    <string name="duration">"Duration: "</string>
 </resources>

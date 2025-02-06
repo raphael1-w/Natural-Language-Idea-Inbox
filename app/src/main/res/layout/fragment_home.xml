@@ -24,6 +24,18 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/emptyView"
+        android:textSize="24sp"
+        android:padding="8dp"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:text="@string/no_ideas">
+
+    </TextView>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
