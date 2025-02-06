@@ -5,10 +5,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.room.Room;
@@ -18,9 +22,9 @@ import com.example.myapplication.database.IdeasDao;
 import com.example.myapplication.database.Ideas_table;
 import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentHomeBinding;
+import com.example.myapplication.ui.detail.DetailFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
-import java.util.Collections;
 import java.util.List;
 
 public class HomeFragment extends Fragment {
@@ -58,23 +62,33 @@ public class HomeFragment extends Fragment {
         new Thread (() -> {
             List<Ideas_table> ideas = ideasDao.getAllNewestFirst();
 
-            // If list is not empty, remove TextView
-            if (!ideas.isEmpty()) {
-                requireActivity().runOnUiThread(() -> {
-                    binding.emptyView.setVisibility(View.GONE);
-                });
-            }
-
             // Update the UI on the main thread
             requireActivity().runOnUiThread(() -> {
-                // Create an adapter for the RecyclerView
-                IdeasAdapter adapter = new IdeasAdapter(ideas);
+
+                // If list is not empty, remove TextView
+                if (!ideas.isEmpty()) {
+                    binding.emptyView.setVisibility(View.GONE);
+                }
+
+                // Create an adapter with a click listener
+                IdeasAdapter adapter = new IdeasAdapter(ideas, this::openDetailFragment);
 
                 // Set the adapter for the RecyclerView
                 recyclerView.setAdapter(adapter);
             });
         }).start();
     }
+
+    private void openDetailFragment(Ideas_table idea) {
+        // Open the detail fragment with the selected idea
+        DetailFragment detailFragment = DetailFragment.newInstance(idea);
+        FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();
+        transaction.setReorderingAllowed(true);
+        transaction.replace(R.id.fragment_container, detailFragment);
+        transaction.addToBackStack("Ideas");
+        transaction.commit();
+    }
+
 
 
     private void calculateBottomMargin() { // Calculate the bottom margin for the capture bar

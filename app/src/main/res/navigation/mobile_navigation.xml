@@ -25,7 +25,7 @@
 
     <fragment
         android:id="@+id/navigation_recording"
-        android:name="com.example.myapplication.ui.recording.RecordingFragment"
+        android:name="com.example.myapplication.ui.detail.DetailFragment"
         android:label="@string/title_recording"
-        tools:layout="@layout/fragment_recording" />
+        tools:layout="@layout/fragment_detail" />
 </navigation>

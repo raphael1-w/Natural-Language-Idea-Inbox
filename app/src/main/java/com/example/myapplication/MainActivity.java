@@ -57,15 +57,15 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(binding.navView, navController);
 
         // Hide bottom navigation bar when recording fragment is visible
-//        navController.addOnDestinationChangedListener((navController1, navDestination, bundle) -> {
-//            {
-//                if(navDestination.getId() == R.id.navigation_recording) {
-//                    navView.setVisibility(View.GONE);
-//                } else {
-//                    navView.setVisibility(View.VISIBLE);
-//                }
-//            }
-//        });
+        navController.addOnDestinationChangedListener((navController1, navDestination, bundle) -> {
+            {
+                if(navDestination.getId() == R.id.navigation_recording) {
+                    navView.setVisibility(View.GONE);
+                } else {
+                    navView.setVisibility(View.VISIBLE);
+                }
+            }
+        });
     }
 
     private void createDir() {

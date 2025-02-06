@@ -1,6 +1,5 @@
 package com.example.myapplication.ui.home;
 
-import android.media.MediaMetadataRetriever;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,17 +8,21 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.myapplication.R;
 import com.example.myapplication.database.Ideas_table;
-import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 
 public class IdeasAdapter extends RecyclerView.Adapter<IdeasAdapter.ViewHolder> {
     private final List<Ideas_table> ideas;
+    private final onItemClickListener listener;
 
-    public IdeasAdapter(List<Ideas_table> ideas) {
+    public interface onItemClickListener {
+        void onItemClick(Ideas_table idea);
+    }
+
+    public IdeasAdapter(List<Ideas_table> ideas, onItemClickListener listener) {
         this.ideas = ideas;
+        this.listener = listener;
     }
 
     @NonNull
@@ -45,6 +48,9 @@ public class IdeasAdapter extends RecyclerView.Adapter<IdeasAdapter.ViewHolder> 
             String duration = formatDuration(idea.recording_duration);
             holder.duration.setText("Duration: " + duration);
         }
+
+        // Set click listener for the whole item
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(idea));
     }
 
     @Override
