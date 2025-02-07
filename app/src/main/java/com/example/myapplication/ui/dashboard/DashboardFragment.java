@@ -103,7 +103,7 @@ public class DashboardFragment extends Fragment {
                 // Change the icon of the commit button based if the input field has text
                 if (s.length() > 0) {
                     commitButtonIsRecord = false;
-                    commitButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_send, null));
+                    commitButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_upward, null));
                 } else {
                     commitButtonIsRecord = true;
                     commitButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_mic, null));
