@@ -32,7 +32,7 @@
         android:padding="8dp"
         android:layout_gravity="center"
         android:gravity="center"
-        android:text="@string/no_ideas">
+        android:text="">
 
     </TextView>
 

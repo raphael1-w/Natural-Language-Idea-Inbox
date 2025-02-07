@@ -25,12 +25,14 @@ import com.example.myapplication.databinding.FragmentHomeBinding;
 import com.example.myapplication.ui.detail.DetailFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
     private IdeasDao ideasDao;
+    private AppDatabase db;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -41,7 +43,7 @@ public class HomeFragment extends Fragment {
         View root = binding.getRoot();
 
         // Initialize database instance
-        AppDatabase db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
+        db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
         ideasDao = db.ideasDao();
 
         // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
@@ -52,6 +54,7 @@ public class HomeFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         // Load ideas from the database
+        recyclerView.setAdapter(new IdeasAdapter(new ArrayList<>(), this::openDetailFragment)); // Set an empty adapter first
         loadIdeas(recyclerView);
 
         return root;
@@ -65,9 +68,9 @@ public class HomeFragment extends Fragment {
             // Update the UI on the main thread
             requireActivity().runOnUiThread(() -> {
 
-                // If list is not empty, remove TextView
-                if (!ideas.isEmpty()) {
-                    binding.emptyView.setVisibility(View.GONE);
+                // If list is not empty, set textview to @string/no_ideas
+                if (ideas.isEmpty()) {
+                    binding.emptyView.setText(R.string.no_ideas);
                 }
 
                 // Create an adapter with a click listener
@@ -80,16 +83,10 @@ public class HomeFragment extends Fragment {
     }
 
     private void openDetailFragment(Ideas_table idea) {
-        // Open the detail fragment with the selected idea
-        DetailFragment detailFragment = DetailFragment.newInstance(idea);
-        FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();
-        transaction.setReorderingAllowed(true);
-        transaction.replace(R.id.fragment_container, detailFragment);
-        transaction.addToBackStack("Ideas");
-        transaction.commit();
+        // Open the detail fragment with the selected idea using nav controller
+        NavController navController = Navigation.findNavController(requireActivity(), R.id.nav_host_fragment_activity_main);
+        navController.navigate(R.id.navigation_detail, DetailFragment.newInstance(idea).getArguments());
     }
-
-
 
     private void calculateBottomMargin() { // Calculate the bottom margin for the capture bar
 
@@ -120,6 +117,7 @@ public class HomeFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        db.close();
         binding = null;
     }
 }

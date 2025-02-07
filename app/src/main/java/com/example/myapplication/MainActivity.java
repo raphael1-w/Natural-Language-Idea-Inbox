@@ -19,6 +19,7 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.example.myapplication.databinding.ActivityMainBinding;
 import com.google.android.material.color.DynamicColors;
+import com.google.android.material.navigation.NavigationBarView;
 
 import java.io.File;
 
@@ -42,27 +43,41 @@ public class MainActivity extends AppCompatActivity {
         // Create required dirs for the app if not already created
         createDir();
 
-        BottomNavigationView navView = findViewById(R.id.nav_view);
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
-                .build();
+        // Set up the bottom navigation bar
+        BottomNavigationView bottomNavigationView = findViewById(R.id.nav_view);
 
-        // Get NavHostFragment by ID
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_activity_main);
         assert navHostFragment != null;
         NavController navController = navHostFragment.getNavController();
 
-        NavigationUI.setupWithNavController(binding.navView, navController);
+        NavigationUI.setupWithNavController(bottomNavigationView, navController);
+
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.navigation_home) {
+                navController.navigate(R.id.navigation_home);
+                return true;
+            } else if (itemId == R.id.navigation_dashboard) {
+                navController.navigate(R.id.navigation_dashboard);
+                return true;
+            } else if (itemId == R.id.navigation_notifications) {
+                navController.navigate(R.id.navigation_notifications);
+                return true;
+            }
+            return false;
+        });
+
+        // Do nothing when the same item is reselected
+        bottomNavigationView.setOnItemReselectedListener(item -> {
+        });
 
         // Hide bottom navigation bar when recording fragment is visible
         navController.addOnDestinationChangedListener((navController1, navDestination, bundle) -> {
             {
-                if(navDestination.getId() == R.id.navigation_recording) {
-                    navView.setVisibility(View.GONE);
+                if(navDestination.getId() == R.id.navigation_detail) {
+                    bottomNavigationView.setVisibility(View.GONE);
                 } else {
-                    navView.setVisibility(View.VISIBLE);
+                    bottomNavigationView.setVisibility(View.VISIBLE);
                 }
             }
         });

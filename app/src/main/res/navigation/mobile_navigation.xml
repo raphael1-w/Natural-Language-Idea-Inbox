@@ -24,7 +24,7 @@
         tools:layout="@layout/fragment_notifications" />
 
     <fragment
-        android:id="@+id/navigation_recording"
+        android:id="@+id/navigation_detail"
         android:name="com.example.myapplication.ui.detail.DetailFragment"
         android:label="@string/title_recording"
         tools:layout="@layout/fragment_detail" />

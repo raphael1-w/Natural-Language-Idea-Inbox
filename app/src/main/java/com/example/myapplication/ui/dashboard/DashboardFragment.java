@@ -44,6 +44,7 @@ public class DashboardFragment extends Fragment {
     String audioFilePath;
     Date date = new Date();
     File recordingDir;
+    private AppDatabase db;
     IdeasDao ideasDao;
     AttachmentsDao attachmentsDao;
 
@@ -58,7 +59,7 @@ public class DashboardFragment extends Fragment {
         View root = binding.getRoot();
 
         // Initialize database instance
-        AppDatabase db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
+        db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
         ideasDao = db.ideasDao();
         attachmentsDao = db.attachmentsDao();
 
@@ -90,7 +91,7 @@ public class DashboardFragment extends Fragment {
             } else {
                 // If the commit button is set to send, send the message
                 send();
-            };
+            }
         });
 
         // Get the input field
@@ -266,6 +267,9 @@ public class DashboardFragment extends Fragment {
             mediaRecorder.release();
             mediaRecorder = null;
         }
+
+        // Release the database instance
+        db.close();
 
         binding = null;
     }
