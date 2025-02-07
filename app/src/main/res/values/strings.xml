@@ -19,4 +19,5 @@
     <string name="idea_title">Idea Title</string>
     <string name="no_ideas">No ideas yet!</string>
     <string name="duration">"Duration: "</string>
+    <string name="delete_item">Delete</string>
 </resources>

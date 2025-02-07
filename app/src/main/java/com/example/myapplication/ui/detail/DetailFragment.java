@@ -5,17 +5,20 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 
 import com.example.myapplication.R;
 import com.example.myapplication.database.Ideas_table;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 public class DetailFragment extends Fragment {
-    private TextView titleView, typeView, tagsView, dateView, durationView;
+    private TextView typeView, tagsView, dateView, durationView;
+    private MaterialToolbar topAppBar;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -36,14 +39,14 @@ public class DetailFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_detail, container, false);
 
-        titleView = view.findViewById(R.id.detailTitle);
+        topAppBar = view.findViewById(R.id.topAppBar);
         typeView = view.findViewById(R.id.detailType);
         tagsView = view.findViewById(R.id.detailTags);
         dateView = view.findViewById(R.id.detailDate);
         durationView = view.findViewById(R.id.detailDuration);
 
         if (getArguments() != null) {
-            titleView.setText(getArguments().getString("title"));
+            topAppBar.setTitle(getArguments().getString("title"));
             typeView.setText("Type: " + getArguments().getString("type"));
             tagsView.setText("Tags: " + getArguments().getString("tags"));
 
@@ -57,6 +60,20 @@ public class DetailFragment extends Fragment {
                 durationView.setVisibility(View.GONE);
             }
         }
+
+        // Handle top bar close button by popping the fragment from the back stack
+        topAppBar.setNavigationOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
+
+        // Handle opt bar menu
+        topAppBar.setOnMenuItemClickListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.action_delete) {
+                // Handle delete action
+                Toast.makeText(requireContext(), "Delete action", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            return false;
+        });
 
         return view;
     }
