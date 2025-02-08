@@ -21,9 +21,11 @@ public class Ideas_table {
 
     public Date updated_at;
 
+    public Long recording_duration;
+
     public String recording_file_path;
 
-    public Long recording_duration;
+    public String transcript_file_path;
 
     public String text_file_path;
 
