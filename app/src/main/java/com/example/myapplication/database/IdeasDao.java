@@ -28,6 +28,9 @@ public interface IdeasDao {
     @Query("SELECT * FROM Ideas WHERE has_attachments = :hasAttachments")
     List<Ideas_table> getIdeasWithAttachments(boolean hasAttachments);
 
+    @Query("SELECT * FROM Ideas WHERE id = :id")
+    Ideas_table getIdeaById(int id);
+
     @Insert
     void insertAll(Ideas_table... ideas);
 
