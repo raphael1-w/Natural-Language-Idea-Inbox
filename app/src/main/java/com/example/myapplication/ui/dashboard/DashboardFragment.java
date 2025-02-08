@@ -159,10 +159,11 @@ public class DashboardFragment extends Fragment {
                 Long audioFileDuration = cleanUp(audioFilePath); // Automatically delete the recording if it is too short
 
                 // Add audio idea entry to database if audio file is not deleted
-                    if (audioFileDuration > -1) {
-                        Log.d("Recording", "Audio file duration: " + audioFileDuration);
-                        // Get the file name from the audio file path
-                        String fileName = audioFilePath.substring(audioFilePath.lastIndexOf("/") + 1);
+                if (audioFileDuration > -1) {
+                    Log.d("Recording", "Audio file duration: " + audioFileDuration);
+
+                    // Get the file name from the audio file path
+                    String fileName = "AUD_" + audioFilePath.replaceAll(".*/|[^0-9]", "").substring(0, 12);
 
                     insertToDatabase(fileName, date, "audio", audioFilePath, audioFileDuration, false);
                 }
