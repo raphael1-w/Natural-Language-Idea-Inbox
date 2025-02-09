@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -19,18 +20,27 @@ import com.example.myapplication.database.AppDatabase;
 import com.example.myapplication.database.AttachmentsDao;
 import com.example.myapplication.database.IdeasDao;
 import com.example.myapplication.database.Ideas_table;
+import com.example.myapplication.databinding.FragmentDetailBinding;
+import com.example.myapplication.databinding.FragmentHomeBinding;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
+import java.util.Scanner;
 
 public class DetailFragment extends Fragment {
     private TextView typeView, tagsView, dateView, durationView;
+    private FragmentDetailBinding binding;
     private MaterialToolbar topAppBar;
     private AppDatabase db;
     private IdeasDao ideasDao;
     private AttachmentsDao attachmentsDao;
     private Ideas_table thisIdea;
+    private String transcriptFilePath, textFilePath, summaryFilePath;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -43,6 +53,7 @@ public class DetailFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_detail, container, false);
+        binding = FragmentDetailBinding.bind(view);
 
         // Initialize database and DAOs
         db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
@@ -50,10 +61,6 @@ public class DetailFragment extends Fragment {
         attachmentsDao = db.attachmentsDao();
 
         topAppBar = view.findViewById(R.id.topAppBar);
-//        typeView = view.findViewById(R.id.detailType);
-//        tagsView = view.findViewById(R.id.detailTags);
-//        dateView = view.findViewById(R.id.detailDate);
-//        durationView = view.findViewById(R.id.detailDuration);
 
         if (getArguments() != null) {
             // Get the Handler for UI updates
@@ -64,6 +71,19 @@ public class DetailFragment extends Fragment {
         // Set up click listeners and other UI configurations
         topAppBar.setNavigationOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
 
+        // Set up the segmented buttons for selecting the file to show
+        MaterialButtonToggleGroup toggleButton = view.findViewById(R.id.segmentedButtons);
+        toggleButton.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                if (checkedId == R.id.btn_transcript) {
+                    showTextFiles(transcriptFilePath);
+                } else if (checkedId == R.id.btn_userText) {
+                    showTextFiles(textFilePath);
+                } else {
+                    showTextFiles(summaryFilePath);
+                }
+            };
+        });
         return view;
     }
 
@@ -90,18 +110,37 @@ public class DetailFragment extends Fragment {
     // Method to update UI with the fetched data
     private void updateUI() {
         topAppBar.setTitle(thisIdea.title);
-//        typeView.setText("Type: " + thisIdea.type);
-//        tagsView.setText("Tags: " + thisIdea.tags);
 
-//        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-//
-//        dateView.setText("Date: " + sdf.format(thisIdea.created_at));
-//
-//        if (thisIdea.type.equals("audio")) {
-//            durationView.setText("Duration: " + formatDuration(thisIdea.recording_duration));
-//        } else {
-//            durationView.setVisibility(View.GONE);
-//        }
+        transcriptFilePath = thisIdea.transcript_file_path;
+        textFilePath = thisIdea.text_file_path;
+        summaryFilePath = thisIdea.summary_file_path;
+    }
+
+    private void showTextFiles(String filePath) {
+        Log.d("DetailFragment", "Showing text file: " + filePath);
+        if (filePath != null) {
+            binding.EmptyFileText.setVisibility(View.GONE);
+            // Open the file and show the text in the editableTextArea
+                File file = new File(filePath);
+                    // Read the file and show the text in the editableTextArea
+                    StringBuilder text = new StringBuilder();
+                    try (Scanner scanner = new Scanner(file)) {
+                        while (scanner.hasNextLine()) {
+                            text.append(scanner.nextLine()).append("\n");
+                        }
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+            binding.editableTextArea.setVisibility(View.VISIBLE);
+            binding.editableTextArea.setText(text.toString());
+
+        } else {
+            binding.editableTextArea.setVisibility(View.GONE);
+
+            // Show no files available in EmptyFileText
+            binding.EmptyFileText.setVisibility(View.VISIBLE);
+            binding.EmptyFileText.setText("File not yet avaliable");
+        }
     }
 
     private String formatDuration(long durationMs) {

@@ -40,7 +40,8 @@
             android:background="@drawable/ideas_detail_textbox_custom_background"
             android:paddingHorizontal="12dp"
             android:paddingVertical="3dp"
-            android:layout_margin="8dp">
+            android:layout_margin="8dp"
+            android:orientation="vertical">
 
             <!-- Editable Text Area (Non-elevated, mimicking iPod screen) -->
             <EditText
@@ -58,6 +59,13 @@
                 android:labelFor="@+id/editableTextArea"
                 android:background="@null"
                 android:scrollbars="vertical"/>
+
+            <TextView
+                android:id="@+id/EmptyFileText"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:layout_gravity="center"/>
         </LinearLayout>
 
         <LinearLayout
@@ -76,7 +84,10 @@
                 android:id="@+id/segmentedButtons"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_horizontal">
+                android:gravity="center_horizontal"
+                app:singleSelection="true"
+                app:checkedButton="@+id/btn_transcript"
+                app:selectionRequired="true">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_transcript"
