@@ -46,6 +46,7 @@ public class DetailFragment extends Fragment {
         DetailFragment fragment = new DetailFragment();
         Bundle args = new Bundle();
         args.putInt("idea_id", idea.id);
+        args.putString("type", idea.type);
         fragment.setArguments(args);
         return fragment;
     }
@@ -96,6 +97,7 @@ public class DetailFragment extends Fragment {
         return new Thread(() -> {
             try {
                 assert getArguments() != null;
+                // Fetch the idea from the database
                 thisIdea = ideasDao.getIdeaById(getArguments().getInt("idea_id"));
 
                 // Update UI on main thread
@@ -107,10 +109,12 @@ public class DetailFragment extends Fragment {
         });
     }
 
-    // Method to update UI with the fetched data
-    private void updateUI() {
+
+    private void updateUI() { // Method to update UI with the fetched data
+        // Set the title of the top app bar
         topAppBar.setTitle(thisIdea.title);
 
+        // Set the path of the required text files
         transcriptFilePath = thisIdea.transcript_file_path;
         textFilePath = thisIdea.text_file_path;
         summaryFilePath = thisIdea.summary_file_path;

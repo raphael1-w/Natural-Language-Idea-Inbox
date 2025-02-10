@@ -227,8 +227,45 @@ public class DashboardFragment extends Fragment {
     }
 
     private void send() {
-        //TODO: Implement sending the message
-        Toast.makeText(getContext(), "Message sent", Toast.LENGTH_SHORT).show();
+        // Get the input field
+        EditText editText = binding.getRoot().findViewById(R.id.inputField);
+        String text = editText.getText().toString();
+
+        // If the input field is empty, do nothing
+        if (text.isEmpty()) {
+            return;
+        }
+
+        // Set the current date-time for database entry
+        date.setTime(System.currentTimeMillis());
+
+        // Get current date-time with alphanumeric values to name the text file
+        String currentDateTime = java.time.LocalDateTime.now().toString().replaceAll("[^a-zA-Z0-9]", "");
+
+        // Create the text file
+        File textDir = new File(requireContext().getFilesDir(), "/texts");
+        File textFile = new File(textDir, currentDateTime + "_text.txt");
+        String textFilePath = textFile.getAbsolutePath();
+        Log.d("Files", "Text file created at " + textFilePath);
+
+        // Write the text to the file
+        try {
+            textFile.createNewFile();
+            java.io.FileWriter writer = new java.io.FileWriter(textFile);
+            writer.write(text);
+            writer.close();
+        } catch (IOException e) {
+            Log.e("Files", "Error writing text file", e);
+        }
+
+        // Get the file name from the audio file path
+        String fileName = "TXT_" + textFilePath.replaceAll(".*/|[^0-9]", "").substring(0, 12);
+
+        // Add text idea entry to database
+        insertToDatabase(fileName, date, "text", textFilePath, (long) 0, false);
+
+        // Clear the input field
+        editText.setText("");
     }
 
     private void calculateBottomMargin() { // Calculate the bottom margin for the capture bar
