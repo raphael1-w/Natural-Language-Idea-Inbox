@@ -109,8 +109,5 @@
                 app:icon="@drawable/ic_mic"
                 />
         </LinearLayout>
-
     </RelativeLayout>
-
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

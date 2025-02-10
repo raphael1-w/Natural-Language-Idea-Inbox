@@ -43,7 +43,7 @@
             android:layout_margin="8dp"
             android:orientation="vertical">
 
-            <!-- Editable Text Area (Non-elevated, mimicking iPod screen) -->
+            <!-- Editable Text Area -->
             <EditText
                 android:id="@+id/editableTextArea"
                 android:layout_width="match_parent"
@@ -58,7 +58,7 @@
                 android:scrollHorizontally="false"
                 android:labelFor="@+id/editableTextArea"
                 android:background="@null"
-                android:scrollbars="vertical"/>
+                android:scrollbars="vertical" />
 
             <TextView
                 android:id="@+id/EmptyFileText"

@@ -100,13 +100,23 @@ public class DashboardFragment extends Fragment {
         editText.addTextChangedListener(new TextWatcher() {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Change the icon of the commit button based if the input field has text
-                if (s.length() > 0) {
-                    commitButtonIsRecord = false;
-                    commitButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_arrow_upward, null));
-                } else {
-                    commitButtonIsRecord = true;
-                    commitButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_mic, null));
+                // Determine the new icon
+                int newIconRes = (s.length() > 0) ? R.drawable.ic_arrow_upward : R.drawable.ic_mic;
+
+                // Only update the icon if amount of text has changed between 0 and 1
+                if ((s.length() > 0 && commitButtonIsRecord) || (s.length() == 0 && !commitButtonIsRecord)) {
+                    // Update the commit button state to determine the action
+                    commitButtonIsRecord = (s.length() == 0);
+
+                    // Animate the icon change
+                    commitButton.animate()
+                            .alpha(0f) // Fade out
+                            .setDuration(50) // Animation duration
+                            .withEndAction(() -> {
+                                commitButton.setIcon(ResourcesCompat.getDrawable(getResources(), newIconRes, null));
+                                commitButton.animate().alpha(1f).setDuration(100).start(); // Fade in
+                            })
+                            .start();
                 }
             }
 

@@ -105,7 +105,7 @@ public class HomeFragment extends Fragment {
 
                 // Set the bottom margin for your element
                 ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) yourElement.getLayoutParams();
-                params.bottomMargin = navBarHeight + Math.round(getResources().getDisplayMetrics().density); // 8dp above the nav bar
+                params.bottomMargin = navBarHeight + Math.round(getResources().getDisplayMetrics().density); // 0dp above the nav bar
                 yourElement.setLayoutParams(params);
 
                 // Remove the listener to avoid multiple calls
