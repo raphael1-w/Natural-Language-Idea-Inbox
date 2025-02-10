@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.detail;
 
+import android.graphics.LinearGradient;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -201,10 +202,14 @@ public class DetailFragment extends Fragment {
         MaterialButton rewindButton = binding.getRoot().findViewById(R.id.rewindButton);
         MaterialButton forwardButton = binding.getRoot().findViewById(R.id.forwardButton);
         Slider audioProgressSlider = binding.getRoot().findViewById(R.id.audioProgressSlider);
+        TextView currentDurationText = binding.getRoot().findViewById(R.id.currentDurationText);
+        TextView totalDurationText = binding.getRoot().findViewById(R.id.totalDurationText);
 
-        // Set max value of the slider to the duration of the audio
+        // Set max value of the slider and the toto the duration of the audio
         recordingDuration = mediaPlayer.getDuration();
         audioProgressSlider.setValueTo(recordingDuration);
+        totalDurationText.setText(formatDuration(recordingDuration));
+
 
         // Runnable to update slider position
         updateSeekBar = new Runnable() {
@@ -212,6 +217,7 @@ public class DetailFragment extends Fragment {
             public void run() {
                 if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                     audioProgressSlider.setValue(mediaPlayer.getCurrentPosition());
+                    currentDurationText.setText(formatDuration(mediaPlayer.getCurrentPosition()));
                     handler.postDelayed(this, 100); // Update every 100ms
                 }
             }
@@ -220,8 +226,9 @@ public class DetailFragment extends Fragment {
         mediaPlayer.setOnCompletionListener(mp -> {
             playPauseButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_play, null));
             handler.removeCallbacks(updateSeekBar);
-            // Set the slider to the end of the audio in case it didn't reach the end visually due to update interval
-            audioProgressSlider.setValue(recordingDuration);
+            // Set the slider and current duration text to start
+            audioProgressSlider.setValue(0);
+            currentDurationText.setText(formatDuration(0));
         });
 
         playPauseButton.setOnClickListener(v -> {
@@ -239,17 +246,20 @@ public class DetailFragment extends Fragment {
         rewindButton.setOnClickListener(v -> {
             // Rewind in 5 second intervals
             mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 5000);
+            audioProgressSlider.setValue(mediaPlayer.getCurrentPosition());
         });
 
         forwardButton.setOnClickListener(v -> {
             // Fast forward in 5 second intervals
             mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 5000);
+            audioProgressSlider.setValue(mediaPlayer.getCurrentPosition());
         });
 
-        // Seek to position when user moves the slider
+        // Seek to position when user moves the slider and change the current duration text
         audioProgressSlider.addOnChangeListener((slider, value, fromUser) -> {
             if (fromUser) {
                 mediaPlayer.seekTo((int) value);
+                currentDurationText.setText(formatDuration((int) value));
             }
         });
     }

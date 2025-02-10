@@ -133,7 +133,38 @@
                     android:id="@+id/audioProgressSlider"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"/>
+                    android:layout_gravity="center_horizontal"
+                    app:labelBehavior="gone"/>
+
+                <!-- Time Labels (Current Time & Duration) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="4dp">
+
+                    <!-- Current Playback Time (Bottom Left) -->
+                    <TextView
+                        android:id="@+id/currentDurationText"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="0:00"
+                        android:textSize="14sp"
+                        android:gravity="start"
+                        android:layout_gravity="start"/>
+
+                    <!-- Total Duration (Bottom Right) -->
+                    <TextView
+                        android:id="@+id/totalDurationText"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="69:69"
+                        android:textSize="14sp"
+                        android:gravity="end"
+                        android:layout_gravity="end"/>
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/audioButtons"
@@ -184,4 +215,8 @@
         </LinearLayout>
 
     </LinearLayout>
+
+
+
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
