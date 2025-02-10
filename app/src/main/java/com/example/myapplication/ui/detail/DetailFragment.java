@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.detail;
 
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -9,9 +10,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.room.Room;
 
@@ -21,14 +22,14 @@ import com.example.myapplication.database.AttachmentsDao;
 import com.example.myapplication.database.IdeasDao;
 import com.example.myapplication.database.Ideas_table;
 import com.example.myapplication.databinding.FragmentDetailBinding;
-import com.example.myapplication.databinding.FragmentHomeBinding;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.slider.Slider;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.text.SimpleDateFormat;
+import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Scanner;
@@ -36,12 +37,18 @@ import java.util.Scanner;
 public class DetailFragment extends Fragment {
     private TextView typeView, tagsView, dateView, durationView;
     private FragmentDetailBinding binding;
+    private boolean isTextIdea;
     private MaterialToolbar topAppBar;
     private AppDatabase db;
     private IdeasDao ideasDao;
     private AttachmentsDao attachmentsDao;
     private Ideas_table thisIdea;
-    private String transcriptFilePath, textFilePath, summaryFilePath;
+    private String transcriptFilePath, textFilePath, summaryFilePath, recordingFilePath;
+    private MediaPlayer mediaPlayer;
+    private int recordingDuration;
+    private Handler handler = new Handler();
+    private Runnable updateSeekBar;
+
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -64,11 +71,26 @@ public class DetailFragment extends Fragment {
 
         topAppBar = view.findViewById(R.id.topAppBar);
 
-        if (getArguments() != null) {
-            // Get the Handler for UI updates
-            Thread dbThread = getDbThread();
-            dbThread.start();
+        assert getArguments() != null;
+        if (Objects.equals(getArguments().getString("type"), "text")) {
+            isTextIdea = true;
         }
+
+        // Start thread to fetch data from the database and update the UI
+        Thread dbThread = getDbThread();
+        dbThread.start();
+
+        try { // Wait for the thread to finish before proceeding
+            dbThread.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Set the path of the required text files
+        transcriptFilePath = thisIdea.transcript_file_path;
+        textFilePath = thisIdea.text_file_path;
+        summaryFilePath = thisIdea.summary_file_path;
+        recordingFilePath = thisIdea.recording_file_path;
 
         // Set up click listeners and other UI configurations
         topAppBar.setNavigationOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
@@ -84,8 +106,16 @@ public class DetailFragment extends Fragment {
                 } else {
                     showTextFiles(summaryFilePath);
                 }
-            };
+            }
         });
+
+        if (!isTextIdea) {
+            try {
+                prepareMediaControls();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         return view;
     }
@@ -115,13 +145,8 @@ public class DetailFragment extends Fragment {
         // Set the title of the top app bar
         topAppBar.setTitle(thisIdea.title);
 
-        // Set the path of the required text files
-        transcriptFilePath = thisIdea.transcript_file_path;
-        textFilePath = thisIdea.text_file_path;
-        summaryFilePath = thisIdea.summary_file_path;
-
         // Configure UI for text ideas
-        if (getArguments() != null && Objects.equals(getArguments().getString("type"), "text")) {
+        if (isTextIdea) {
             // Remove transcript button, then selecting the user text button
             binding.btnTranscript.setVisibility(View.GONE);
             binding.btnUserText.setChecked(true);
@@ -162,9 +187,87 @@ public class DetailFragment extends Fragment {
         }
     }
 
+    private void prepareMediaControls() throws IOException {
+        // Set up the media player
+        mediaPlayer = new MediaPlayer();
+        mediaPlayer.reset();
+        assert recordingFilePath != null;
+        mediaPlayer.setDataSource(recordingFilePath);
+        mediaPlayer.prepare();
+        mediaPlayer.setLooping(false);
+
+        // Set up listeners for audio controls
+        MaterialButton playPauseButton = binding.getRoot().findViewById(R.id.playPauseButton);
+        MaterialButton rewindButton = binding.getRoot().findViewById(R.id.rewindButton);
+        MaterialButton forwardButton = binding.getRoot().findViewById(R.id.forwardButton);
+        Slider audioProgressSlider = binding.getRoot().findViewById(R.id.audioProgressSlider);
+
+        // Set max value of the slider to the duration of the audio
+        recordingDuration = mediaPlayer.getDuration();
+        audioProgressSlider.setValueTo(recordingDuration);
+
+        // Runnable to update slider position
+        updateSeekBar = new Runnable() {
+            @Override
+            public void run() {
+                if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                    audioProgressSlider.setValue(mediaPlayer.getCurrentPosition());
+                    handler.postDelayed(this, 100); // Update every 100ms
+                }
+            }
+        };
+
+        mediaPlayer.setOnCompletionListener(mp -> {
+            playPauseButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_play, null));
+            handler.removeCallbacks(updateSeekBar);
+            // Set the slider to the end of the audio in case it didn't reach the end visually due to update interval
+            audioProgressSlider.setValue(recordingDuration);
+        });
+
+        playPauseButton.setOnClickListener(v -> {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.pause();
+                playPauseButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_play, null));
+                handler.removeCallbacks(updateSeekBar);
+            } else {
+                mediaPlayer.start();
+                playPauseButton.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_pause, null));
+                handler.post(updateSeekBar);
+            }
+        });
+
+        rewindButton.setOnClickListener(v -> {
+            // Rewind in 5 second intervals
+            mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 5000);
+        });
+
+        forwardButton.setOnClickListener(v -> {
+            // Fast forward in 5 second intervals
+            mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 5000);
+        });
+
+        // Seek to position when user moves the slider
+        audioProgressSlider.addOnChangeListener((slider, value, fromUser) -> {
+            if (fromUser) {
+                mediaPlayer.seekTo((int) value);
+            }
+        });
+    }
+
     private String formatDuration(long durationMs) {
         long seconds = (durationMs / 1000) % 60;
         long minutes = (durationMs / 1000) / 60;
         return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
+    }
+
+    @Override
+    public void onDestroyView() {
+        //TODO Warn user of unsaved changes
+        super.onDestroyView();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+        }
+        db.close();
+        binding = null;
     }
 }
