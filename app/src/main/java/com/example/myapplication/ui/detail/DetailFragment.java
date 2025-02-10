@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Scanner;
 
 public class DetailFragment extends Fragment {
@@ -85,6 +86,7 @@ public class DetailFragment extends Fragment {
                 }
             };
         });
+
         return view;
     }
 
@@ -109,7 +111,6 @@ public class DetailFragment extends Fragment {
         });
     }
 
-
     private void updateUI() { // Method to update UI with the fetched data
         // Set the title of the top app bar
         topAppBar.setTitle(thisIdea.title);
@@ -118,6 +119,20 @@ public class DetailFragment extends Fragment {
         transcriptFilePath = thisIdea.transcript_file_path;
         textFilePath = thisIdea.text_file_path;
         summaryFilePath = thisIdea.summary_file_path;
+
+        // Configure UI for text ideas
+        if (getArguments() != null && Objects.equals(getArguments().getString("type"), "text")) {
+            // Remove transcript button, then selecting the user text button
+            binding.btnTranscript.setVisibility(View.GONE);
+            binding.btnUserText.setChecked(true);
+
+            // Hide audio controls
+            binding.audioControls.setVisibility(View.GONE);
+
+            binding.segmentedButtons.check(R.id.btn_userText);
+        } else {
+            showTextFiles(transcriptFilePath);
+        }
     }
 
     private void showTextFiles(String filePath) {
