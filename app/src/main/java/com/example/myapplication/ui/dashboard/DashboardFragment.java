@@ -156,16 +156,14 @@ public class DashboardFragment extends Fragment {
                 mediaRecorder.release();
                 mediaRecorder = null;
 
-                Long audioFileDuration = cleanUp(audioFilePath); // Automatically delete the recording if it is too short
+                boolean isAudioFileSaved = cleanUp(audioFilePath); // Automatically delete the recording if it is too short
 
-                // Add audio idea entry to database if audio file is not deleted
-                if (audioFileDuration > -1) {
-                    Log.d("Recording", "Audio file duration: " + audioFileDuration);
-
+                // Add audio idea entry to database if audio file is saved
+                if (isAudioFileSaved) {
                     // Get the file name from the audio file path
                     String fileName = "AUD_" + audioFilePath.replaceAll(".*/|[^0-9]", "").substring(0, 12);
 
-                    insertToDatabase(fileName, date, "audio", audioFilePath, audioFileDuration, false);
+                    insertToDatabase(fileName, date, "audio", audioFilePath,false);
                 }
             } catch (RuntimeException e) {
                 // if no valid audio data has been received when stop() is called
@@ -183,25 +181,29 @@ public class DashboardFragment extends Fragment {
         }
     }
 
-    private Long cleanUp(String audioFilePath) {
-        // Get the duration of the recording
-        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-        metadataRetriever.setDataSource(audioFilePath);
-        String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-        long durationLong = Long.parseLong(duration);
+    private boolean cleanUp(String audioFilePath) {
+        long durationLong = getRecordingDuration(audioFilePath);
 
         // If recording is less than 600 milliseconds, delete the file
         if (durationLong < 600) {
             new File(audioFilePath).delete();
             Log.d("Recording", "Deleted recording: " + audioFilePath);
-            return (long) -1;
+            return false;
         } else {
             Log.d("Files", "Audio file saved to " + audioFilePath);
-            return durationLong;
+            return true;
         }
     }
 
-    private void insertToDatabase(String title, Date date, String type, String filePath, Long duration, boolean hasAttachments) {
+    private static long getRecordingDuration(String audioFilePath) {
+        // Get the duration of the recording
+        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
+        metadataRetriever.setDataSource(audioFilePath);
+        String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+        return Long.parseLong(duration);
+    }
+
+    private void insertToDatabase(String title, Date date, String type, String filePath, boolean hasAttachments) {
 
         // Create a new idea object
         Ideas_table idea = new Ideas_table();
@@ -212,7 +214,7 @@ public class DashboardFragment extends Fragment {
 
         if (type.equals("audio")) {
             idea.recording_file_path = filePath;
-            idea.recording_duration = duration;
+            idea.recording_duration = getRecordingDuration(filePath);
         } else { // Type is text
             idea.text_file_path = filePath;
         }
@@ -262,7 +264,7 @@ public class DashboardFragment extends Fragment {
         String fileName = "TXT_" + textFilePath.replaceAll(".*/|[^0-9]", "").substring(0, 12);
 
         // Add text idea entry to database
-        insertToDatabase(fileName, date, "text", textFilePath, (long) 0, false);
+        insertToDatabase(fileName, date, "text", textFilePath, false);
 
         // Clear the input field
         editText.setText("");
