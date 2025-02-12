@@ -20,4 +20,5 @@
     <string name="no_ideas">No ideas yet!</string>
     <string name="duration">"Duration: "</string>
     <string name="delete_item">Delete</string>
+    <string name="save_item">Save</string>
 </resources>

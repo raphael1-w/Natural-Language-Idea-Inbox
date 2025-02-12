@@ -1,6 +1,5 @@
 package com.example.myapplication.ui.detail;
 
-import android.graphics.LinearGradient;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,6 +8,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,7 +49,7 @@ public class DetailFragment extends Fragment {
     private int recordingDuration;
     private Handler handler = new Handler();
     private Runnable updateSeekBar;
-
+    private boolean hasChanges = false;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -93,8 +93,30 @@ public class DetailFragment extends Fragment {
         summaryFilePath = thisIdea.summary_file_path;
         recordingFilePath = thisIdea.recording_file_path;
 
-        // Set up click listeners and other UI configurations
+        // Set up click listeners for the top app bar
         topAppBar.setNavigationOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
+
+        topAppBar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_save) {
+                // Save the changes to the database
+                saveChanges();
+                return true;
+            }
+            if (item.getItemId() == R.id.action_delete) {
+                // Delete the idea from the database
+                // TODO: Implement delete functionality
+                return true;
+            }
+            return false;
+        });
+
+        // TODO: Set save button icon colour
+
+        // Set the save button to not be visible by default
+        if (!hasChanges) {
+            // make the save button not visible
+            topAppBar.findViewById(R.id.action_save).setVisibility(View.GONE);
+        }
 
         // Set up the segmented buttons for selecting the file to show
         MaterialButtonToggleGroup toggleButton = view.findViewById(R.id.segmentedButtons);
@@ -112,7 +134,7 @@ public class DetailFragment extends Fragment {
 
         if (!isTextIdea) {
             try {
-                prepareMediaControls();
+                prepareMediaPLayerAndControls();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -188,7 +210,11 @@ public class DetailFragment extends Fragment {
         }
     }
 
-    private void prepareMediaControls() throws IOException {
+    private void saveChanges() { // Save changes to text files (transcripts/notes/summaries)
+        return;
+    }
+
+    private void prepareMediaPLayerAndControls() throws IOException {
         // Set up the media player
         mediaPlayer = new MediaPlayer();
         mediaPlayer.reset();
