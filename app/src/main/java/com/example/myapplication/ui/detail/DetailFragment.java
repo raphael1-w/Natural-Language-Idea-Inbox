@@ -4,6 +4,8 @@ import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,6 +33,7 @@ import com.google.android.material.slider.Slider;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Scanner;
@@ -45,11 +48,13 @@ public class DetailFragment extends Fragment {
     private AttachmentsDao attachmentsDao;
     private Ideas_table thisIdea;
     private String transcriptFilePath, textFilePath, summaryFilePath, recordingFilePath;
+    private String currentShownFile;
+    private HashMap<String, String> fileCache = new HashMap<String, String>();
+    private boolean hasChanges = false;
     private MediaPlayer mediaPlayer;
     private int recordingDuration;
     private Handler handler = new Handler();
     private Runnable updateSeekBar;
-    private boolean hasChanges = false;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -118,16 +123,41 @@ public class DetailFragment extends Fragment {
             topAppBar.findViewById(R.id.action_save).setVisibility(View.GONE);
         }
 
+        // Set up listener for changes in the text area
+        binding.editableTextArea.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                // Do nothing
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Update the cache with the new text
+                hasChanges = true;
+                fileCache.put(currentShownFile, s.toString());
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // Show the save button
+                if (hasChanges) {
+                    topAppBar.findViewById(R.id.action_save).setVisibility(View.VISIBLE);
+                    topAppBar.setSubtitle("@String/unsaved_changes");
+                }
+            }
+        });
+
         // Set up the segmented buttons for selecting the file to show
         MaterialButtonToggleGroup toggleButton = view.findViewById(R.id.segmentedButtons);
         toggleButton.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (isChecked) {
                 if (checkedId == R.id.btn_transcript) {
-                    showTextFiles(transcriptFilePath);
+                    showTextFiles(transcriptFilePath, "transcript");
                 } else if (checkedId == R.id.btn_userText) {
-                    showTextFiles(textFilePath);
+                    showTextFiles(textFilePath, "userText");
                 } else {
-                    showTextFiles(summaryFilePath);
+                    showTextFiles(summaryFilePath, "summary");
                 }
             }
         });
@@ -176,38 +206,59 @@ public class DetailFragment extends Fragment {
 
             // Hide audio controls
             binding.audioControls.setVisibility(View.GONE);
-
             binding.segmentedButtons.check(R.id.btn_userText);
+
+            showTextFiles(textFilePath, "userText");
         } else {
-            showTextFiles(transcriptFilePath);
+            showTextFiles(transcriptFilePath, "transcript");
         }
     }
 
-    private void showTextFiles(String filePath) {
-        Log.d("DetailFragment", "Showing text file: " + filePath);
-        if (filePath != null) {
+    private void showTextFiles(String filePath, String fileType) {
+        currentShownFile = fileType;
+        Log.d("DetailFragment", "cache file: " + fileCache);
+        if (fileCache.containsKey(fileType)) {
+            binding.editableTextArea.setText(fileCache.get(fileType));
+            binding.editableTextArea.setVisibility(View.VISIBLE);
+
+            Log.d("DetailFragment", "Loaded from cache: " + filePath);
+
+        } else if (filePath != null) { // If the text file is available but not in cache
             binding.EmptyFileText.setVisibility(View.GONE);
             // Open the file and show the text in the editableTextArea
-                File file = new File(filePath);
-                    // Read the file and show the text in the editableTextArea
-                    StringBuilder text = new StringBuilder();
-                    try (Scanner scanner = new Scanner(file)) {
-                        while (scanner.hasNextLine()) {
-                            text.append(scanner.nextLine()).append("\n");
-                        }
-                    } catch (FileNotFoundException e) {
-                        throw new RuntimeException(e);
-                    }
+            StringBuilder text = getStringBuilder(filePath);
             binding.editableTextArea.setVisibility(View.VISIBLE);
             binding.editableTextArea.setText(text.toString());
 
-        } else {
+            // Cache the file
+            fileCache.put(fileType, text.toString());
+
+            Log.d("DetailFragment", "Showing text file: " + filePath);
+
+        } else { // If the text file is not available
             binding.editableTextArea.setVisibility(View.GONE);
 
             // Show no files available in EmptyFileText
             binding.EmptyFileText.setVisibility(View.VISIBLE);
             binding.EmptyFileText.setText("File not yet avaliable");
         }
+
+        Log.d("DetailFragment", "cache file after: " + fileCache);
+    }
+
+    @NonNull
+    private static StringBuilder getStringBuilder(String filePath) {
+        File file = new File(filePath);
+        // Read the file and show the text in the editableTextArea
+        StringBuilder text = new StringBuilder();
+        try (Scanner scanner = new Scanner(file)) {
+            while (scanner.hasNextLine()) {
+                text.append(scanner.nextLine()).append("\n");
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return text;
     }
 
     private void saveChanges() { // Save changes to text files (transcripts/notes/summaries)

@@ -21,4 +21,6 @@
     <string name="duration">"Duration: "</string>
     <string name="delete_item">Delete</string>
     <string name="save_item">Save</string>
+    <string name="unsaved_changes">Unsaved changes</string>
+    <string name="all_changes_saved">All changes saved</string>
 </resources>
