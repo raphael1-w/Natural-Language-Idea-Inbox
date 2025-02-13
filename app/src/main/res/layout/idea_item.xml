@@ -6,6 +6,7 @@
     android:layout_marginBottom="8dp"
     android:layout_marginHorizontal="8dp"
     android:background="@drawable/rounded_container"
+    android:backgroundTint="?attr/colorSurfaceContainerHighest"
     android:elevation="10dp">
 
     <TextView
@@ -14,29 +15,34 @@
         android:layout_height="wrap_content"
         android:textStyle="bold"
         android:textSize="18sp"
+        android:textColor="?attr/colorOnSurface"
         android:text="@string/idea_title" />
 
     <TextView
         android:id="@+id/ideaType"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="?attr/colorOnSurface"
         android:text="@string/type" />
 
     <TextView
         android:id="@+id/ideaDuration"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="?attr/colorOnSurface"
         android:text="@string/duration" />
 
     <TextView
         android:id="@+id/ideaTags"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="?attr/colorOnSurface"
         android:text="@string/tags" />
 
     <TextView
         android:id="@+id/ideaDate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="?attr/colorOnSurface"
         android:text="@string/created" />
 </LinearLayout>

@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         // Apply dynamic colors to the activity
-//        DynamicColors.applyToActivitiesIfAvailable(this.getApplication());
+        DynamicColors.applyToActivitiesIfAvailable(this.getApplication());
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
