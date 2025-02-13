@@ -97,7 +97,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:paddingHorizontal="16dp"
-                    android:text="Transcript" />
+                    android:text="@string/transcript_file_tab" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_userText"
@@ -106,7 +106,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:paddingHorizontal="16dp"
-                    android:text="Notes" />
+                    android:text="@string/notes_file_tab" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_summary"
@@ -115,7 +115,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:paddingHorizontal="16dp"
-                    android:text="Summary" />
+                    android:text="@string/summary_file_tab" />
             </com.google.android.material.button.MaterialButtonToggleGroup>
 
             <!-- Audio Controls UI -->

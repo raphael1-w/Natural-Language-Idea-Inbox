@@ -143,7 +143,7 @@ public class DetailFragment extends Fragment {
                 // Show the save button
                 if (hasChanges) {
                     topAppBar.findViewById(R.id.action_save).setVisibility(View.VISIBLE);
-                    topAppBar.setSubtitle("@String/unsaved_changes");
+                    topAppBar.setSubtitle(getResources().getString(R.string.unsaved_changes));
                 }
             }
         });
@@ -239,8 +239,21 @@ public class DetailFragment extends Fragment {
             binding.editableTextArea.setVisibility(View.GONE);
 
             // Show no files available in EmptyFileText
+            String currentFileText = "";
+            switch (currentShownFile) {
+                case "transcript":
+                    currentFileText = getResources().getString(R.string.transcript_file_tab);
+                    break;
+                case "userText":
+                    currentFileText = getResources().getString(R.string.notes_file_tab);
+                    break;
+                case "summary":
+                    currentFileText = getResources().getString(R.string.summary_file_tab);
+                    break;
+            }
+
             binding.EmptyFileText.setVisibility(View.VISIBLE);
-            binding.EmptyFileText.setText("File not yet avaliable");
+            binding.EmptyFileText.setText(getResources().getString(R.string.file_not_available, currentFileText));
         }
 
         Log.d("DetailFragment", "cache file after: " + fileCache);
