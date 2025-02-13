@@ -14,6 +14,7 @@ navigationFragment = "2.6.0"
 navigationUi = "2.6.0"
 roomCommon = "2.6.1"
 roomRuntime = "2.6.1"
+roomCompilerProcessingTesting = "2.6.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -32,6 +33,7 @@ room-common = { group = "androidx.room", name = "room-common", version.ref = "ro
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCommon" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntime" }
 room-testing = { module = "androidx.room:room-testing", version.ref = "roomCommon" }
+room-compiler-processing-testing = { group = "androidx.room", name = "room-compiler-processing-testing", version.ref = "roomCompilerProcessingTesting" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

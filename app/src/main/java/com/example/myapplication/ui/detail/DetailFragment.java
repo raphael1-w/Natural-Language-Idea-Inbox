@@ -165,6 +165,8 @@ public class DetailFragment extends Fragment {
             }
         });
 
+
+
         if (!isTextIdea) {
             try {
                 prepareMediaPLayerAndControls();

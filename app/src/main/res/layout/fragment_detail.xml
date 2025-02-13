@@ -8,12 +8,13 @@
     android:layout_gravity="center_vertical|top"
     android:orientation="vertical"
     android:background="@color/md_theme_background"
+    android:fitsSystemWindows="true"
     tools:context=".ui.detail.DetailFragment">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fitsSystemWindows="true"
+        android:fitsSystemWindows="false"
         app:liftOnScroll="true">
 
         <com.google.android.material.appbar.MaterialToolbar
