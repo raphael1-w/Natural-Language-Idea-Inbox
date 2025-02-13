@@ -22,9 +22,10 @@
     <string name="delete_item">Delete</string>
     <string name="save_item">Save</string>
     <string name="unsaved_changes">Unsaved changes</string>
-    <string name="all_changes_saved">All changes saved</string>
+    <string name="all_changes_saved">All changes saved!</string>
     <string name="transcript_file_tab">Transcript</string>
     <string name="notes_file_tab">Notes</string>
     <string name="summary_file_tab">Summary</string>
     <string name="file_not_available">%1$s not yet available</string>
+    <string name="saving_changes">Saving…</string>
 </resources>

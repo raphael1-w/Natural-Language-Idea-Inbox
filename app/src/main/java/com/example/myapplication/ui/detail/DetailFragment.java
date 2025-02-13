@@ -32,6 +32,7 @@ import com.google.android.material.slider.Slider;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Locale;
@@ -55,6 +56,7 @@ public class DetailFragment extends Fragment {
     private int recordingDuration;
     private Handler handler = new Handler();
     private Runnable updateSeekBar;
+    private boolean ignoreTextChanges = false;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -115,8 +117,6 @@ public class DetailFragment extends Fragment {
             return false;
         });
 
-        // TODO: Set save button icon colour
-
         // Set the save button to not be visible by default
         if (!hasChanges) {
             // make the save button not visible
@@ -132,7 +132,10 @@ public class DetailFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Update the cache with the new text
+                if (ignoreTextChanges) {
+                    return;
+                }
+                // Update the cache with the new text when the user edits the text
                 hasChanges = true;
                 fileCache.put(currentShownFile, s.toString());
 
@@ -218,8 +221,10 @@ public class DetailFragment extends Fragment {
         currentShownFile = fileType;
         Log.d("DetailFragment", "cache file: " + fileCache);
         if (fileCache.containsKey(fileType)) {
+            ignoreTextChanges = true;
             binding.editableTextArea.setText(fileCache.get(fileType));
             binding.editableTextArea.setVisibility(View.VISIBLE);
+            ignoreTextChanges = false;
 
             Log.d("DetailFragment", "Loaded from cache: " + filePath);
 
@@ -227,8 +232,11 @@ public class DetailFragment extends Fragment {
             binding.EmptyFileText.setVisibility(View.GONE);
             // Open the file and show the text in the editableTextArea
             StringBuilder text = getStringBuilder(filePath);
-            binding.editableTextArea.setVisibility(View.VISIBLE);
+
+            ignoreTextChanges = true;
             binding.editableTextArea.setText(text.toString());
+            binding.editableTextArea.setVisibility(View.VISIBLE);
+            ignoreTextChanges = false;
 
             // Cache the file
             fileCache.put(fileType, text.toString());
@@ -275,7 +283,36 @@ public class DetailFragment extends Fragment {
     }
 
     private void saveChanges() { // Save changes to text files (transcripts/notes/summaries)
-        return;
+        topAppBar.setSubtitle(getResources().getString(R.string.saving_changes));
+
+        // Save the text changes from the cache to the files
+        for (String fileType : fileCache.keySet()) {
+            String filePath = null;
+            switch (fileType) {
+                case "transcript":
+                    filePath = transcriptFilePath;
+                    break;
+                case "userText":
+                    filePath = textFilePath;
+                    break;
+                case "summary":
+                    filePath = summaryFilePath;
+                    break;
+            }
+
+            if (filePath != null) {
+                try (FileWriter writer = new FileWriter(filePath)) {
+                    writer.write(fileCache.get(fileType));
+                } catch (IOException e) {
+                    Log.e("DetailFragment", "Error saving file: " + filePath, e);
+                    Toast.makeText(requireContext(), "Error saving file: " + filePath, Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+
+        topAppBar.setSubtitle(getResources().getString(R.string.all_changes_saved));
+        hasChanges = false;
+        topAppBar.findViewById(R.id.action_save).setVisibility(View.GONE);
     }
 
     private void prepareMediaPLayerAndControls() throws IOException {
