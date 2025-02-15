@@ -57,7 +57,8 @@
                 android:labelFor="@+id/editableTextArea"
                 android:background="@null"
                 android:scrollbars="vertical"
-                android:textColor="?attr/colorOnSurface"/>
+                android:textColor="?attr/colorOnSurface"
+                android:hint="@string/detail_note_hint"/>
 
             <TextView
                 android:id="@+id/EmptyFileText"

@@ -170,7 +170,16 @@ public class DashboardFragment extends Fragment {
                     // Get the file name from the audio file path
                     String fileName = "AUD_" + audioFilePath.replaceAll(".*/|[^0-9]", "").substring(0, 12);
 
-                    insertToDatabase(fileName, date, "audio", audioFilePath,false);
+                    // Create text file for the audio idea based on the audio file path
+                    String textFilePath = audioFilePath.replace("recordings", "texts").replace("_audio.m4a", "_text.txt");
+                    File textFile = new File(textFilePath);
+                    try {
+                        textFile.createNewFile();
+                    } catch (IOException e) {
+                        Log.e("Files", "Error creating text file", e);
+                    }
+
+                    insertToDatabase(fileName, date, "audio", audioFilePath, textFilePath, false);
                 }
             } catch (RuntimeException e) {
                 // if no valid audio data has been received when stop() is called
@@ -210,7 +219,7 @@ public class DashboardFragment extends Fragment {
         return Long.parseLong(duration);
     }
 
-    private void insertToDatabase(String title, Date date, String type, String filePath, boolean hasAttachments) {
+    private void insertToDatabase(String title, Date date, String type, String audioFilePath, String textFilePath,boolean hasAttachments) {
 
         // Create a new idea object
         Ideas_table idea = new Ideas_table();
@@ -220,10 +229,11 @@ public class DashboardFragment extends Fragment {
         idea.updated_at = date;
 
         if (type.equals("audio")) {
-            idea.recording_file_path = filePath;
-            idea.recording_duration = getRecordingDuration(filePath);
+            idea.recording_file_path = audioFilePath;
+            idea.recording_duration = getRecordingDuration(audioFilePath);
+            idea.text_file_path = textFilePath;
         } else { // Type is text
-            idea.text_file_path = filePath;
+            idea.text_file_path = textFilePath;
         }
 
         idea.has_attachments = hasAttachments;
@@ -271,7 +281,7 @@ public class DashboardFragment extends Fragment {
         String fileName = "TXT_" + textFilePath.replaceAll(".*/|[^0-9]", "").substring(0, 12);
 
         // Add text idea entry to database
-        insertToDatabase(fileName, date, "text", textFilePath, false);
+        insertToDatabase(fileName, date, "text", null, textFilePath, false);
 
         // Clear the input field
         editText.setText("");
