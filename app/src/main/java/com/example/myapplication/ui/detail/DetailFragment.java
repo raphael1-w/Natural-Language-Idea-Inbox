@@ -1,7 +1,5 @@
 package com.example.myapplication.ui.detail;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -12,15 +10,15 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.room.Room;
 
 import com.example.myapplication.R;
@@ -29,11 +27,14 @@ import com.example.myapplication.database.AttachmentsDao;
 import com.example.myapplication.database.IdeasDao;
 import com.example.myapplication.database.Ideas_table;
 import com.example.myapplication.databinding.FragmentDetailBinding;
+import com.example.myapplication.ui.home.HomeViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -43,6 +44,9 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DetailFragment extends Fragment {
     private TextView typeView, tagsView, dateView, durationView;
@@ -127,7 +131,7 @@ public class DetailFragment extends Fragment {
             }
             if (item.getItemId() == R.id.action_delete) {
                 // Delete the idea from the database
-                // TODO: Implement delete functionality
+                showDeleteDialog();
                 return true;
             }
             return false;
@@ -418,20 +422,154 @@ public class DetailFragment extends Fragment {
             MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
             builder.setTitle(requireContext().getResources().getString(R.string.unsaved_changes_title));
             builder.setMessage(requireContext().getResources().getString(R.string.unsaved_changes_message));
-            builder.setPositiveButton(requireContext().getResources().getString(R.string.positive_dialog),
+            builder.setPositiveButton(requireContext().getResources().getString(R.string.unsaved_changes_positive_dialog),
                     (dialog, which) -> {
                         requireActivity().getSupportFragmentManager().popBackStack();
                     });
-            builder.setNegativeButton(requireContext().getResources().getString(R.string.negative_dialog), null);
+            builder.setNegativeButton(requireContext().getResources().getString(R.string.unsaved_changes_negative_dialog), null);
             builder.show();
         } else {
             requireActivity().getSupportFragmentManager().popBackStack();
         }
     }
 
+    private void showDeleteDialog() {
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        builder.setTitle(requireContext().getResources().getString(R.string.delete_dialog_title));
+        builder.setMessage(requireContext().getResources().getString(R.string.delete_dialog_message));
+        builder.setPositiveButton(requireContext().getResources().getString(R.string.delete_dialog_positive_dialog),
+                (dialog, which) -> {
+                    deleteIdea();
+                });
+        builder.setNegativeButton(requireContext().getResources().getString(R.string.delete_dialog_negative_dialog), null);
+        builder.show();
+    }
+
+    private void deleteIdea() {
+        // TODO: Accommodate attachments deletion
+
+        logAllFilesInDirectories(transcriptFilePath, textFilePath, summaryFilePath, recordingFilePath);
+
+        // Delete files
+        AtomicBoolean allFilesDeleted = new AtomicBoolean(true); // Track overall success
+
+        String[] filePaths = {transcriptFilePath, textFilePath, summaryFilePath, recordingFilePath};
+
+        // Create a thread pool (adjust the number of threads as needed)
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
+
+        for (String filePath : filePaths) {
+            if (filePath != null && !filePath.isEmpty()) { // Check for null AND empty string
+                // Create a Runnable task for file deletion
+                Runnable fileDeletionTask = () -> {
+                    File file = new File(filePath);
+                    if (file.exists()) { // Check if the file exists
+                        boolean deleted = file.delete();
+                        if (!deleted) {
+                            Log.e("deleteIdea", "Failed to delete file: " + filePath);
+                            allFilesDeleted.set(false); // Mark overall failure
+                            // Consider:  Collect failed file paths for later retry/cleanup
+                        } else {
+                            Log.d("deleteIdea", "File deleted successfully: " + filePath);
+                        }
+                    } else {
+                        Log.w("deleteIdea", "File not found: " + filePath);
+                    }
+                };
+
+                // Submit the task to the executor service
+                executorService.execute(fileDeletionTask);
+            }
+        }
+
+        // Shutdown the executor service after all tasks are submitted
+        executorService.shutdown();
+
+        Handler mainHandler = new Handler(Looper.getMainLooper()); // Handler to run code on the UI thread
+        HomeViewModel viewModel = new ViewModelProvider(requireActivity()).get(HomeViewModel.class);
+
+        new Thread(() -> {
+            boolean dbDeleteSuccess = true; // Track database deletion success
+
+            try {
+                // Delete the idea from the database
+                ideasDao.delete(thisIdea);
+            } catch (Exception e) {
+                Log.e("deleteIdea", "Error deleting idea: " + e.getMessage(), e);
+                dbDeleteSuccess = false;
+
+                // Update UI on the main thread to show the error
+                mainHandler.post(() -> {
+                    Toast.makeText(requireContext(), "Error deleting idea", Toast.LENGTH_SHORT).show();
+                });
+            } finally {
+                // Always run this code on the main thread after background task completes
+                boolean finalDbDeleteSuccess = dbDeleteSuccess;
+                mainHandler.post(() -> {
+
+                    String snackbarMessage = "";
+
+                    if (!allFilesDeleted.get()) {
+                        // Display a warning to the user (optional)
+                        Log.w("deleteIdea", "Some files were not deleted.");
+                        snackbarMessage = "Idea deleted, but some files may not have been removed.";
+                    } else if (!finalDbDeleteSuccess) {
+                        // Display a warning to the user (optional)
+                        Log.w("deleteIdea", "Idea was deleted, but an error occurred while deleting from the database.");
+                        snackbarMessage = "Idea deleted, but an error occurred while deleting from the database.";
+                    } else {
+                        // Show a snackbar to confirm deletion
+                        snackbarMessage = "Idea deleted";
+                    }
+
+                    viewModel.setDeletionResult(snackbarMessage);
+
+                    // Navigate back to the list fragment
+                    requireActivity().getSupportFragmentManager().popBackStack();
+
+                    logAllFilesInDirectories(transcriptFilePath, textFilePath, summaryFilePath, recordingFilePath);
+                });
+            }
+        }).start();
+    }
+
+    public static void logAllFilesInDirectories(String transcriptFilePath, String textFilePath, String summaryFilePath, String recordingFilePath) {
+        Log.d("DetailFragment", "Logging all files in directories");
+
+        final String TAG = "FileLogger"; // For Logcat filtering
+
+        logFiles(TAG, "Transcript Files", transcriptFilePath);
+        logFiles(TAG, "Text Files", textFilePath);
+        logFiles(TAG, "Summary Files", summaryFilePath);
+        logFiles(TAG, "Recording Files", recordingFilePath);
+    }
+
+    private static void logFiles(String TAG, String fileType, String filePath) {
+        if (filePath != null && !filePath.isEmpty()) {
+            File file = new File(filePath);
+            File directory = file.getParentFile(); // Get the parent directory
+            if (directory != null && directory.exists() && directory.isDirectory()) {
+                String directoryPath = directory.getAbsolutePath();
+
+                Log.d(TAG, "--- " + fileType + " (Directory: " + directoryPath + ") ---");
+                File[] files = directory.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        Log.d(TAG, "File: " + f.getAbsolutePath() + ", Size: " + f.length() + " bytes");
+                    }
+                } else {
+                    Log.w(TAG, "Directory is empty or cannot be read: " + directoryPath);
+                }
+            } else {
+                Log.w(TAG, "Directory does not exist or is not a directory: " + (directory != null ? directory.getAbsolutePath() : "null"));
+            }
+        } else {
+            Log.w(TAG, "File path is null or empty for: " + fileType);
+        }
+    }
+
     @Override
     public void onDestroyView() {
-        //TODO Warn user of unsaved changes
         super.onDestroyView();
         if (mediaPlayer != null) {
             mediaPlayer.release();

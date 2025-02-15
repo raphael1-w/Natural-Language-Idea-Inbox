@@ -6,17 +6,13 @@ import androidx.lifecycle.ViewModel;
 
 public class HomeViewModel extends ViewModel {
 
-    private final MutableLiveData<String> mText;
+    private MutableLiveData<String> deletionResult = new MutableLiveData<>();
 
-    public HomeViewModel() {
-        mText = new MutableLiveData<>();
+    public MutableLiveData<String> getDeletionResult() {
+        return deletionResult;
     }
 
-    public LiveData<String> getText() {
-        return mText;
-    }
-
-    public void setText(String text) {
-        mText.setValue(text);
+    public void setDeletionResult(String result) {
+        deletionResult.setValue(result);
     }
 }

@@ -30,7 +30,11 @@
     <string name="saving_changes">Saving…</string>
     <string name="detail_note_hint">Any notes about this idea?</string>
     <string name="unsaved_changes_title">Discard changes?</string>
-    <string name="unsaved_changes_message">All unsaved changes will be lost.</string>
-    <string name="positive_dialog">Discard</string>
-    <string name="negative_dialog">Cancel</string>
+    <string name="unsaved_changes_message">All unsaved changes will be lost. </string>
+    <string name="unsaved_changes_positive_dialog">Discard</string>
+    <string name="unsaved_changes_negative_dialog">Cancel</string>
+    <string name="delete_dialog_title">Delete idea?</string>
+    <string name="delete_dialog_message">This idea will be permanently deleted. This cannot be undone. </string>
+    <string name="delete_dialog_positive_dialog">Delete</string>
+    <string name="delete_dialog_negative_dialog">Cancel</string>
 </resources>

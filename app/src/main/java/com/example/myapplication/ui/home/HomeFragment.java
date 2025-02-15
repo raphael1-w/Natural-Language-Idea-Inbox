@@ -1,6 +1,8 @@
 package com.example.myapplication.ui.home;
 
+import android.content.res.Resources;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,8 +10,10 @@ import android.view.ViewTreeObserver;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -24,6 +28,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentHomeBinding;
 import com.example.myapplication.ui.detail.DetailFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +36,7 @@ import java.util.List;
 public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
+    private HomeViewModel viewModel;
     private IdeasDao ideasDao;
     private AppDatabase db;
 
@@ -58,6 +64,55 @@ public class HomeFragment extends Fragment {
         loadIdeas(recyclerView);
 
         return root;
+    }
+
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // Get the ViewModel
+        viewModel = new ViewModelProvider(requireActivity()).get(HomeViewModel.class);
+
+        // Observe the deletionResult LiveData
+        viewModel.getDeletionResult().observe(getViewLifecycleOwner(), new Observer<String>() {
+            @Override
+            public void onChanged(String result) {
+                if (result != null && !result.isEmpty()) { // Check if there's a result
+                    //Show snackbar
+                    showSnackbar(result, view);
+                    viewModel.setDeletionResult(null); // Clear the value (optional) to prevent repeated display
+                }
+            }
+        });
+    }
+
+    private void showSnackbar(String snackbarMessage, View view) {
+        Log.d("ListIdeasFragment", "Showing Snackbar: " + snackbarMessage);
+
+        // Check if view is valid
+        if (view == null) {
+            Log.e("ListIdeasFragment", "View is null, cannot show Snackbar!");
+            return;
+        }
+
+        BottomNavigationView bottomNavigationView = requireActivity().findViewById(R.id.nav_view);
+        if (bottomNavigationView == null) {
+            Log.e("ListIdeasFragment", "BottomNavigationView not found!");
+            return;
+        }
+
+        // Create the Snackbar
+        Snackbar snackbar = Snackbar.make(view, snackbarMessage, Snackbar.LENGTH_LONG);
+        if (snackbar != null && snackbar.getView() != null) {
+
+            CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) snackbar.getView().getLayoutParams();
+            int navBarHeight = bottomNavigationView.getHeight();
+            params.setMargins(24, 0, 24, navBarHeight + Math.round(8 * getResources().getDisplayMetrics().density));
+            snackbar.getView().setLayoutParams(params);
+            snackbar.show();
+        } else {
+            Log.e("ListIdeasFragment", "Snackbar creation or view retrieval failed!");
+        }
     }
 
     private void loadIdeas(RecyclerView recyclerView) {
