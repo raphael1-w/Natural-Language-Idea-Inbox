@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.dashboard;
 
+import android.content.Intent;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Bundle;
@@ -13,6 +14,7 @@ import android.view.ViewGroup;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.view.ViewTreeObserver;
+import android.view.Window;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +24,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.room.Room;
 
 import com.example.myapplication.database.AppDatabase;
@@ -62,13 +65,6 @@ public class DashboardFragment extends Fragment {
         db = Room.databaseBuilder(requireContext(), AppDatabase.class, "app-database").build();
         ideasDao = db.ideasDao();
         attachmentsDao = db.attachmentsDao();
-
-        // Log output the whole ideas table when the fragment is created
-//        new Thread(() -> {
-//            for (Ideas_table idea : ideasDao.getAll()) {
-//                Log.d("Database", "Idea: " + idea.title + " created at " + idea.created_at + "type: " + idea.type);
-//            }
-//        }).start();
 
         // Calculate the bottom margin for the capture bar, adjusting for the BottomNavigationView
         calculateBottomMargin();
@@ -126,6 +122,7 @@ public class DashboardFragment extends Fragment {
             @Override
             public void afterTextChanged(Editable s) {}
         });
+
         return root;
     }
 
