@@ -29,4 +29,8 @@
     <string name="file_not_available">%1$s not yet available</string>
     <string name="saving_changes">Saving…</string>
     <string name="detail_note_hint">Any notes about this idea?</string>
+    <string name="unsaved_changes_title">Discard changes?</string>
+    <string name="unsaved_changes_message">All unsaved changes will be lost.</string>
+    <string name="positive_dialog">Discard</string>
+    <string name="negative_dialog">Cancel</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.example.myapplication.ui.detail;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,6 +17,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
@@ -29,6 +32,7 @@ import com.example.myapplication.databinding.FragmentDetailBinding;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 
 import java.io.File;
@@ -70,6 +74,8 @@ public class DetailFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
         View view = inflater.inflate(R.layout.fragment_detail, container, false);
         binding = FragmentDetailBinding.bind(view);
 
@@ -102,7 +108,16 @@ public class DetailFragment extends Fragment {
         recordingFilePath = thisIdea.recording_file_path;
 
         // Set up click listeners for the top app bar
-        topAppBar.setNavigationOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
+        topAppBar.setNavigationOnClickListener(v -> handleNavigationWithUnsavedChanges());
+
+        // Set up back button callback to handle unsaved changes
+        OnBackPressedCallback callback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleNavigationWithUnsavedChanges();
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), callback);
 
         topAppBar.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_save) {
@@ -396,6 +411,22 @@ public class DetailFragment extends Fragment {
         long seconds = (durationMs / 1000) % 60;
         long minutes = (durationMs / 1000) / 60;
         return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
+    }
+
+    private void handleNavigationWithUnsavedChanges() {
+        if (hasChanges) {
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+            builder.setTitle(requireContext().getResources().getString(R.string.unsaved_changes_title));
+            builder.setMessage(requireContext().getResources().getString(R.string.unsaved_changes_message));
+            builder.setPositiveButton(requireContext().getResources().getString(R.string.positive_dialog),
+                    (dialog, which) -> {
+                        requireActivity().getSupportFragmentManager().popBackStack();
+                    });
+            builder.setNegativeButton(requireContext().getResources().getString(R.string.negative_dialog), null);
+            builder.show();
+        } else {
+            requireActivity().getSupportFragmentManager().popBackStack();
+        }
     }
 
     @Override
