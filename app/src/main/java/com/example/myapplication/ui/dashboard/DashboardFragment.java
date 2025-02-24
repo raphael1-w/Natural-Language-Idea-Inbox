@@ -1,5 +1,8 @@
 package com.example.myapplication.ui.dashboard;
 
+import static android.Manifest.permission.POST_NOTIFICATIONS;
+
+import android.content.Intent;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Bundle;
@@ -18,22 +21,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.room.Room;
 
+import com.example.myapplication.MainActivity;
 import com.example.myapplication.database.AppDatabase;
 import com.example.myapplication.database.AttachmentsDao;
 import com.example.myapplication.database.IdeasDao;
 import com.example.myapplication.database.Ideas_table;
 import com.example.myapplication.R;
 import com.example.myapplication.databinding.FragmentDashboardBinding;
+import com.example.myapplication.transcriptionService.TranscribeService;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,6 +84,9 @@ public class DashboardFragment extends Fragment {
                 // If the commit button is set to record, start recording
                 if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.RECORD_AUDIO}, 200);
+                    // Request post notification permission
+                } else if (ContextCompat.checkSelfPermission(requireContext(), POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED) {
+                    ActivityCompat.requestPermissions(requireActivity(), new String[]{POST_NOTIFICATIONS},101);
                 } else {
                     record();
                 }
@@ -179,6 +186,7 @@ public class DashboardFragment extends Fragment {
                     }
 
                     insertToDatabase(fileName, date, "audio", audioFilePath, textFilePath, false);
+                    startTranscriptionService(audioFilePath);
                 }
             } catch (RuntimeException e) {
                 // if no valid audio data has been received when stop() is called
@@ -194,6 +202,13 @@ public class DashboardFragment extends Fragment {
             }
             Toast.makeText(getContext(), "Recording stopped", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void startTranscriptionService(String audioFilePath) {
+        // Start the transcription service
+         Intent intent = new Intent(requireContext(), TranscribeService.class);
+         intent.putExtra("audioFilePath", audioFilePath);
+         requireContext().startService(intent);
     }
 
     private boolean cleanUp(String audioFilePath) {
@@ -218,7 +233,7 @@ public class DashboardFragment extends Fragment {
         return Long.parseLong(duration);
     }
 
-    private void insertToDatabase(String title, Date date, String type, String audioFilePath, String textFilePath,boolean hasAttachments) {
+    private void insertToDatabase(String title, Date date, String type, String audioFilePath, String textFilePath, boolean hasAttachments) {
 
         // Create a new idea object
         Ideas_table idea = new Ideas_table();

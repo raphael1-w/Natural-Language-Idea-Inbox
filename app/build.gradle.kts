@@ -31,6 +31,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        mlModelBinding = true
     }
 }
 
@@ -46,11 +47,21 @@ dependencies {
     implementation(libs.material.v150)
     implementation(libs.room.common)
     implementation(libs.room.runtime)
+    implementation(libs.tensorflow.lite.metadata)
     testImplementation(libs.junit)
+    implementation(libs.tensorflow.lite.v2161)
+    implementation(libs.tensorflow.lite.gpu.v2161)
+    implementation(libs.tensorflow.lite.support.v044)
+    implementation(libs.play.services.tasks.v1810)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 
     val room_version = "2.6.1"
     annotationProcessor(libs.room.compiler)
     testImplementation(libs.room.testing)
+
+    // LiteRT dependencies for Google Play services
+    implementation(libs.play.services.tflite.java)
+    // Optional: include LiteRT Support Library
+    implementation(libs.play.services.tflite.support)
 }

@@ -12,9 +12,20 @@ material3 = "150"
 materialVersion = "<1.5.0>"
 navigationFragment = "2.6.0"
 navigationUi = "2.6.0"
+playServicesTasksVersion = "18.1.0"
+playServicesTfliteJava = "16.4.0"
 roomCommon = "2.6.1"
 roomRuntime = "2.6.1"
 roomCompilerProcessingTesting = "2.6.1"
+tensorflowLite = "2.7.0"
+tensorflowLiteGpuVersion = "2.16.1"
+tensorflowLiteSupport = "0.3.0"
+tensorflowLiteMetadata = "0.1.0"
+tensorflowLiteGpu = "2.3.0"
+playServicesTasks = "18.2.0"
+litertGpuApi = "1.1.2"
+tensorflowLiteSupportVersion = "0.4.4"
+tensorflowLiteVersion = "2.16.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -29,11 +40,23 @@ material-v150 = { module = "com.google.android.material:material", version.ref =
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
+play-services-tasks-v1810 = { module = "com.google.android.gms:play-services-tasks", version.ref = "playServicesTasksVersion" }
+play-services-tflite-java = { module = "com.google.android.gms:play-services-tflite-java", version.ref = "playServicesTfliteJava" }
+play-services-tflite-support = { module = "com.google.android.gms:play-services-tflite-support", version.ref = "playServicesTfliteJava" }
 room-common = { group = "androidx.room", name = "room-common", version.ref = "roomCommon" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCommon" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntime" }
 room-testing = { module = "androidx.room:room-testing", version.ref = "roomCommon" }
 room-compiler-processing-testing = { group = "androidx.room", name = "room-compiler-processing-testing", version.ref = "roomCompilerProcessingTesting" }
+tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
+tensorflow-lite-gpu-v2161 = { module = "org.tensorflow:tensorflow-lite-gpu", version.ref = "tensorflowLiteGpuVersion" }
+tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
+tensorflow-lite-metadata = { group = "org.tensorflow", name = "tensorflow-lite-metadata", version.ref = "tensorflowLiteMetadata" }
+tensorflow-lite-gpu = { group = "org.tensorflow", name = "tensorflow-lite-gpu", version.ref = "tensorflowLiteGpu" }
+play-services-tasks = { group = "com.google.android.gms", name = "play-services-tasks", version.ref = "playServicesTasks" }
+litert-gpu-api = { group = "com.google.ai.edge.litert", name = "litert-gpu-api", version.ref = "litertGpuApi" }
+tensorflow-lite-support-v044 = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupportVersion" }
+tensorflow-lite-v2161 = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLiteVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
