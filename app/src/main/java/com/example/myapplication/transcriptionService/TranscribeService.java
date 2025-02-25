@@ -45,7 +45,6 @@ public class TranscribeService extends Service {
     private static final int N_SAMPLES = SAMPLE_RATE * CHUNK_LENGTH;
     private static final int CHUNK_OVERLAP = 6;
     private static final int N_SAMPLES_OVERLAP = SAMPLE_RATE * CHUNK_OVERLAP;
-
     private final IBinder binder = new LocalBinder();
     private ExecutorService executor;
     private Interpreter tfliteInterpreter;
@@ -70,8 +69,14 @@ public class TranscribeService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
-            id = intent.getIntExtra("id", 0);
+            id = intent.getIntExtra("id", -1);
             audioFilePath = intent.getStringExtra("audioFilePath");
+        }
+
+        // Start transcription
+        if (audioFilePath != null) {
+            Log.d(TAG, "Starting transcription...");
+            startTranscription(audioFilePath);
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -106,10 +111,6 @@ public class TranscribeService extends Service {
             // Initialize tokenizer
             Log.d(TAG, "Initializing tokenizer...");
             tokenizer = new WhisperTokenizer(getAssets());
-
-            // Start transcription
-            Log.d(TAG, "Starting transcription...");
-            startTranscription(audioFilePath);
         } catch (IOException e) {
             Log.e(TAG, "Error initializing model/tokenizer", e);
             if (callback != null) {
@@ -131,6 +132,7 @@ public class TranscribeService extends Service {
                 if (callback != null) {
                     callback.onTranscriptionComplete(transcript);
                 }
+                Log.d("TranscribeService", "Transcription complete: " + transcript);
             } catch (Exception e) {
                 Log.e(TAG, "Transcription error", e);
                 if (callback != null) {
@@ -142,6 +144,7 @@ public class TranscribeService extends Service {
 
     private String transcribeAudio(String audioPath) throws IOException {
         updateNotification("Loading audio file...");
+        Log.d("TranscribeService", "Load and resample audio file: " + audioPath);
         float[] audio = loadAndResampleAudio(audioPath);
 
         List<float[]> chunks = calculateAndCreateChunks(audio);
@@ -178,54 +181,65 @@ public class TranscribeService extends Service {
 
     private float[] loadAndResampleAudio(String audioPath) {
         try {
-            // Create MediaExtractor to read the audio file
             MediaExtractor extractor = new MediaExtractor();
             extractor.setDataSource(audioPath);
 
+            // Log original file duration
+//            MediaFormat format_ = extractor.getTrackFormat(0);
+//            long durationUs = format_.getLong(MediaFormat.KEY_DURATION);
+//            float durationSec = durationUs / 1_000_000f;
+//            Log.d(TAG, String.format("Original audio duration: %.2f seconds", durationSec));
+
             // Select the first audio track
             int audioTrackIndex = -1;
-            int i = 0;
-            MediaFormat format;
-            while (i < extractor.getTrackCount()) {
+            MediaFormat format = null;
+            for (int i = 0; i < extractor.getTrackCount(); i++) {
                 format = extractor.getTrackFormat(i);
                 String mime = format.getString(MediaFormat.KEY_MIME);
                 if (mime.startsWith("audio/")) {
                     audioTrackIndex = i;
                     break;
                 }
-                i++;
             }
 
-            if (audioTrackIndex == -1) {
+            if (audioTrackIndex == -1 || format == null) {
                 throw new IOException("No audio track found");
             }
 
             extractor.selectTrack(audioTrackIndex);
-            format = extractor.getTrackFormat(audioTrackIndex);
 
             // Get audio properties
             int channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
             int originalSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
-            long duration = format.getLong(MediaFormat.KEY_DURATION) / 1000; // in microseconds
-            int numSamples = (int) (duration * SAMPLE_RATE / 1_000_000.0);
+            int maxBufferSize = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384);
 
-            // Create buffer for raw audio data
-            ByteBuffer inputBuffer = ByteBuffer.allocate(numSamples * 2); // 16-bit audio = 2 bytes per sample
-            int sampleSize;
-            while ((sampleSize = extractor.readSampleData(inputBuffer, 0)) >= 0) {
+            // Create a list to store audio samples
+            List<Float> audioSamples = new ArrayList<>();
+
+            // Read audio data in chunks
+            ByteBuffer buffer = ByteBuffer.allocate(maxBufferSize);
+            while (true) {
+                int sampleSize = extractor.readSampleData(buffer, 0);
+                if (sampleSize < 0) break;
+
+                buffer.rewind();
+                for (int i = 0; i < sampleSize; i += 2) {
+                    if (buffer.remaining() >= 2) {
+                        short sample = buffer.getShort();
+                        audioSamples.add(sample / 32768.0f);
+                    }
+                }
+                buffer.clear();
                 extractor.advance();
             }
 
-            // Convert to float array
-            inputBuffer.rewind();
-            float[] audioData = new float[numSamples];
-            for (i = 0; i < numSamples && inputBuffer.hasRemaining(); i++) {
-                // Convert 16-bit PCM to float in range [-1, 1]
-                short sample = inputBuffer.getShort();
-                audioData[i] = sample / 32768.0f;
-            }
-
             extractor.release();
+
+            // Convert List<Float> to float[]
+            float[] audioData = new float[audioSamples.size()];
+            for (int i = 0; i < audioSamples.size(); i++) {
+                audioData[i] = audioSamples.get(i);
+            }
 
             // Resample if necessary
             if (originalSampleRate != SAMPLE_RATE) {
@@ -236,6 +250,10 @@ public class TranscribeService extends Service {
             if (channels == 2) {
                 audioData = convertStereoToMono(audioData);
             }
+
+            // Log audio properties
+            Log.d(TAG, "Audio loaded: " + audioData.length + " samples, " +
+                    "sample rate: " + SAMPLE_RATE + ", channels: " + channels);
 
             return audioData;
 
@@ -281,15 +299,13 @@ public class TranscribeService extends Service {
             int end = Math.min(start + N_SAMPLES, audio.length);
             float[] chunk = Arrays.copyOfRange(audio, start, end);
 
-            if (chunk.length > N_SAMPLES * 0.25) {
-                if (chunk.length < N_SAMPLES) {
-                    chunk = padAudio(chunk);
-                }
-                chunks.add(chunk);
-            }
+            chunks.add(chunk);
 
-            start = start + N_SAMPLES - N_SAMPLES_OVERLAP;
+            start += (N_SAMPLES - N_SAMPLES_OVERLAP);
         }
+
+        // Log chunking results
+        Log.d(TAG, "Audio chunking: " + chunks.size() + " chunks created");
 
         return chunks;
     }
