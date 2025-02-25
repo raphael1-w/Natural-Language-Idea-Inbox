@@ -319,6 +319,7 @@ public class TranscribeService extends Service {
     private String processAudioChunk(float[] audioChunk) {
         try {
             // Convert audio to mel spectrogram
+            Log.d(TAG, "Computing mel spectrogram, length of audio chunk: " + audioChunk.length);
             float[][] melSpec = computeMelSpectrogram(audioChunk);
 
             // Pad or trim to exactly 3000 frames
@@ -371,10 +372,139 @@ public class TranscribeService extends Service {
     }
 
     private float[][] computeMelSpectrogram(float[] audio) {
-        // Note: You'll need to implement mel spectrogram computation
-        // This could use a signal processing library or native code
-        // For now, this is a placeholder
-        throw new UnsupportedOperationException("Mel spectrogram computation not implemented");
+        // Pad audio if necessary
+        if (audio.length < N_SAMPLES) {
+            audio = padAudio(audio);
+        }
+
+        int numFrames = 1 + (audio.length - N_FFT) / HOP_LENGTH;
+        float[][] melSpec = new float[N_MELS][numFrames];
+        float[][] melFilters = createMelFilterbank();
+        float[] window = createHanningWindow();
+
+        // Process each frame
+        for (int t = 0; t < numFrames; t++) {
+            int start = t * HOP_LENGTH;
+            float[] frame = new float[N_FFT];
+
+            // Apply windowing
+            for (int n = 0; n < N_FFT && (start + n) < audio.length; n++) {
+                frame[n] = audio[start + n] * window[n];
+            }
+
+            // Pad frame to nearest power of 2
+            int paddedLength = nextPowerOfTwo(N_FFT);
+            double[] real = new double[paddedLength];
+            double[] imag = new double[paddedLength];
+
+            // Copy frame data to padded arrays
+            for (int i = 0; i < N_FFT; i++) {
+                real[i] = frame[i];
+            }
+
+            // Perform FFT
+            double[] fftResult = FFTbase.fft(real, imag, true);
+            if (fftResult.length == 0) {
+                Log.e("TranscribeService", "FFT failed");
+                continue;
+            }
+
+            // Calculate power spectrum (only up to N_FFT/2 + 1)
+            float[] powerSpec = new float[1 + N_FFT/2];
+            for (int i = 0; i < powerSpec.length; i++) {
+                float re = (float) fftResult[2*i];
+                float im = (float) fftResult[2*i + 1];
+                powerSpec[i] = (re * re + im * im) / N_FFT;
+            }
+
+            // Apply mel filterbank
+            for (int m = 0; m < N_MELS; m++) {
+                float sum = 0;
+                for (int i = 0; i < powerSpec.length; i++) {
+                    sum += powerSpec[i] * melFilters[m][i];
+                }
+                melSpec[m][t] = sum;
+            }
+        }
+
+        // Log mel spectrogram shape
+        Log.d(TAG, "Mel spectrogram shape: " + melSpec.length + " x " + melSpec[0].length);
+
+        return melSpec;
+    }
+
+    private int nextPowerOfTwo(int n) {
+        int power = 1;
+        while (power < n) {
+            power *= 2;
+        }
+        return power;
+    }
+
+    private float[] createHanningWindow() {
+        float[] window = new float[N_FFT];
+        for (int i = 0; i < N_FFT; i++) {
+            window[i] = 0.5f * (1 - (float)Math.cos(2 * Math.PI * i / (N_FFT - 1)));
+        }
+        return window;
+    }
+
+    private float[][] createMelFilterbank() {
+        // Convert frequencies to mel scale
+        float fMin = 0;
+        float fMax = SAMPLE_RATE / 2;
+        float mMin = freqToMel(fMin);
+        float mMax = freqToMel(fMax);
+
+        // Create mel points
+        float[] melPoints = new float[N_MELS + 2];
+        for (int i = 0; i < melPoints.length; i++) {
+            melPoints[i] = mMin + (mMax - mMin) * i / (N_MELS + 1);
+        }
+
+        // Convert back to frequency
+        float[] freqPoints = new float[melPoints.length];
+        for (int i = 0; i < melPoints.length; i++) {
+            freqPoints[i] = melToFreq(melPoints[i]);
+        }
+
+        // Create filterbank matrix
+        int nFft = 1 + N_FFT/2;
+        float[][] filterbank = new float[N_MELS][nFft];
+        float[] fftFreqs = new float[nFft];
+
+        for (int i = 0; i < nFft; i++) {
+            fftFreqs[i] = i * SAMPLE_RATE / N_FFT;
+        }
+
+        // Create triangular filters
+        for (int i = 0; i < N_MELS; i++) {
+            for (int j = 0; j < nFft; j++) {
+                float freq = fftFreqs[j];
+                float leftMel = freqToMel(freqPoints[i]);
+                float centerMel = freqToMel(freqPoints[i + 1]);
+                float rightMel = freqToMel(freqPoints[i + 2]);
+                float currentMel = freqToMel(freq);
+
+                if (currentMel > leftMel && currentMel < rightMel) {
+                    if (currentMel <= centerMel) {
+                        filterbank[i][j] = (currentMel - leftMel) / (centerMel - leftMel);
+                    } else {
+                        filterbank[i][j] = (rightMel - currentMel) / (rightMel - centerMel);
+                    }
+                }
+            }
+        }
+
+        return filterbank;
+    }
+
+    private float freqToMel(float freq) {
+        return 2595 * (float)Math.log10(1 + freq / 700);
+    }
+
+    private float melToFreq(float mel) {
+        return 700 * ((float)Math.pow(10, mel / 2595) - 1);
     }
 
     private String findOverlapFuzzy(String text1, String text2) {
