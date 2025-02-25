@@ -1,17 +1,20 @@
 package com.example.myapplication.transcriptionService;
 
+import android.content.res.AssetManager;
 import android.util.Log;
 import org.json.JSONObject;
-import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 
 public class WhisperTokenizer {
+    private final AssetManager assetManager;
     private static final String TAG = "SimpleWhisperTokenizer";
 
     private Map<String, Integer> vocab;
@@ -21,7 +24,8 @@ public class WhisperTokenizer {
     private List<Pair<String, String>> bpeMerges;
     private Map<Pair<String, String>, Integer> bpeRanks;
 
-    public WhisperTokenizer(String tokenizerPath) throws IOException, JSONException {
+    public WhisperTokenizer(AssetManager assetManager) throws IOException, JSONException {
+        this.assetManager = assetManager;
         // Initialize collections
         vocab = new HashMap<>();
         reverseVocab = new HashMap<>();
@@ -29,19 +33,20 @@ public class WhisperTokenizer {
         bpeRanks = new HashMap<>();
 
         // Load vocabulary
-        File vocabFile = new File(tokenizerPath, "vocab.json");
-        JSONObject vocabJson = new JSONObject(readFile(vocabFile));
-        Iterator<String> keys = vocabJson.keys();
+        String vocabJson = readAsset("vocab.json");
+        JSONObject vocabObj = new JSONObject(vocabJson);
+        Iterator<String> keys = vocabObj.keys();
         while (keys.hasNext()) {
             String token = keys.next();
-            int tokenId = vocabJson.getInt(token);
+            int tokenId = vocabObj.getInt(token);
             vocab.put(token, tokenId);
             reverseVocab.put(tokenId, token);
         }
+        Log.d(TAG, "Loaded vocabulary with " + vocab.size() + " tokens.");
 
         // Load special tokens
-        File specialTokensFile = new File(tokenizerPath, "special_tokens_map.json");
-        JSONObject specialTokensMap = new JSONObject(readFile(specialTokensFile));
+        String specialTokensJson = readAsset("special_tokens_map.json");
+        JSONObject specialTokensMap = new JSONObject(specialTokensJson);
         Iterator<String> tokenTypes = specialTokensMap.keys();
         while (tokenTypes.hasNext()) {
             String tokenType = tokenTypes.next();
@@ -63,20 +68,21 @@ public class WhisperTokenizer {
                 }
             }
         }
+        Log.d(TAG, "Loaded " + specialTokensIds.size() + " special tokens.");
 
         // Load normalizer config
         try {
-            File normalizerFile = new File(tokenizerPath, "normalizer.json");
-            normalizerConfig = new JSONObject(readFile(normalizerFile));
+            String normalizerJson = readAsset("normalizer.json");
+            normalizerConfig = new JSONObject(normalizerJson);
         } catch (IOException e) {
             Log.w(TAG, "Normalizer file not found. Using basic normalization.");
             normalizerConfig = null;
         }
+        Log.d(TAG, "Loaded normalizer config.");
 
         // Load BPE merges
         try {
-            File mergesFile = new File(tokenizerPath, "merges.txt");
-            List<String> mergesRaw = readLines(mergesFile);
+            List<String> mergesRaw = readAssetLines("merges.txt");
             bpeMerges = new ArrayList<>();
 
             // Skip the first line and process the rest
@@ -91,6 +97,7 @@ public class WhisperTokenizer {
                     }
                 }
             }
+            Log.d(TAG, "Loaded " + bpeMerges.size() + " BPE merges.");
         } catch (IOException e) {
             Log.w(TAG, "Merges file not found. Assuming non-BPE tokenization.");
             bpeMerges = null;
@@ -196,20 +203,18 @@ public class WhisperTokenizer {
         return -1;
     }
 
-    private String readFile(File file) throws IOException {
-        StringBuilder content = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line);
-            }
+    private String readAsset(String assetPath) throws IOException {
+        try (InputStream is = assetManager.open(assetPath)) {
+            byte[] buffer = new byte[is.available()];
+            is.read(buffer);
+            return new String(buffer, "UTF-8");
         }
-        return content.toString();
     }
 
-    private List<String> readLines(File file) throws IOException {
+    private List<String> readAssetLines(String assetPath) throws IOException {
         List<String> lines = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(assetManager.open(assetPath)))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 lines.add(line);

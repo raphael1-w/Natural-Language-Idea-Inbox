@@ -12,13 +12,11 @@ import android.media.MediaFormat;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
 import org.json.JSONException;
 import org.tensorflow.lite.Interpreter;
-import org.tensorflow.lite.support.common.FileUtil;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -102,21 +100,21 @@ public class TranscribeService extends Service {
         try {
             // Load TFLite model
             Log.d(TAG, "Loading TFLite model...");
-//            MappedByteBuffer tfliteModel = FileUtil.loadMappedFile(this, "whisper-base.tflite");
-//            File tfliteModel = new File(getFilesDir(), "app/src/main/ml/whisper.tflite");
             Interpreter.Options options = new Interpreter.Options();
             tfliteInterpreter = new Interpreter(loadModelFile(getAssets(),"whisper.tflite"), options);
 
             // Initialize tokenizer
             Log.d(TAG, "Initializing tokenizer...");
-            String tokenizerPath = new File(getFilesDir(), "whisper-base").getAbsolutePath();
-            tokenizer = new WhisperTokenizer(tokenizerPath);
+            tokenizer = new WhisperTokenizer(getAssets());
 
             // Start transcription
             Log.d(TAG, "Starting transcription...");
             startTranscription(audioFilePath);
         } catch (IOException e) {
-            Log.e(TAG, "Error initializing model", e);
+            Log.e(TAG, "Error initializing model/tokenizer", e);
+            if (callback != null) {
+                callback.onTranscriptionError(e.getMessage());
+            }
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
