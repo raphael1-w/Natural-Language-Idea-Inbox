@@ -185,8 +185,8 @@ public class DashboardFragment extends Fragment {
                         Log.e("Files", "Error creating text file", e);
                     }
 
-                    insertToDatabase(fileName, date, "audio", audioFilePath, textFilePath, false);
-                    startTranscriptionService(audioFilePath);
+                    int id = insertToDatabase(fileName, date, "audio", audioFilePath, textFilePath, false);
+                    startTranscriptionService(audioFilePath, id);
                 }
             } catch (RuntimeException e) {
                 // if no valid audio data has been received when stop() is called
@@ -204,11 +204,12 @@ public class DashboardFragment extends Fragment {
         }
     }
 
-    private void startTranscriptionService(String audioFilePath) {
+    private void startTranscriptionService(String audioFilePath, int id) {
         // Start the transcription service
-         Intent intent = new Intent(requireContext(), TranscribeService.class);
-         intent.putExtra("audioFilePath", audioFilePath);
-         requireContext().startService(intent);
+        Intent intent = new Intent(requireContext(), TranscribeService.class);
+        intent.putExtra("audioFilePath", audioFilePath);
+        intent.putExtra("id", id);
+        requireContext().startService(intent);
     }
 
     private boolean cleanUp(String audioFilePath) {
@@ -233,7 +234,7 @@ public class DashboardFragment extends Fragment {
         return Long.parseLong(duration);
     }
 
-    private void insertToDatabase(String title, Date date, String type, String audioFilePath, String textFilePath, boolean hasAttachments) {
+    private int insertToDatabase(String title, Date date, String type, String audioFilePath, String textFilePath, boolean hasAttachments) {
 
         // Create a new idea object
         Ideas_table idea = new Ideas_table();
@@ -252,11 +253,16 @@ public class DashboardFragment extends Fragment {
 
         idea.has_attachments = hasAttachments;
 
+        final int[] id = new int[1];
+
         // Insert the idea into the database in a new thread
         new Thread(() -> {
-            ideasDao.insertAll(idea);
+            id[0] = (int) ideasDao.insertAll(idea)[0];
             Log.d("Database", "Inserted idea: " + idea.title);
         }).start();
+
+        // TODO make sure the id returned is correct
+        return id[0];
     }
 
     private void send() {

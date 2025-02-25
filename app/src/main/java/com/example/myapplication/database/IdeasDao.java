@@ -32,7 +32,7 @@ public interface IdeasDao {
     Ideas_table getIdeaById(int id);
 
     @Insert
-    void insertAll(Ideas_table... ideas);
+    long[] insertAll(Ideas_table... ideas);
 
     @Delete
     void delete(Ideas_table idea);

@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.detail;
 
+import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -27,6 +28,7 @@ import com.example.myapplication.database.AttachmentsDao;
 import com.example.myapplication.database.IdeasDao;
 import com.example.myapplication.database.Ideas_table;
 import com.example.myapplication.databinding.FragmentDetailBinding;
+import com.example.myapplication.transcriptionService.TranscribeService;
 import com.example.myapplication.ui.home.HomeViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -185,6 +187,16 @@ public class DetailFragment extends Fragment {
             }
         });
 
+        // Set up the transcribe button
+        binding.transcribeButton.setOnClickListener(v -> {
+            Log.d("DetailFragment", "Transcribe button clicked, starting transcription service");
+            // Start the transcription service
+            Intent intent = new Intent(requireContext(), TranscribeService.class);
+            intent.putExtra("audioFilePath", recordingFilePath);
+            intent.putExtra("id", thisIdea.id);
+            requireContext().startService(intent);
+        });
+
         if (!isTextIdea) {
             try {
                 prepareMediaPLayerAndControls();
@@ -250,6 +262,7 @@ public class DetailFragment extends Fragment {
 
         } else if (filePath != null) { // If the text file is available but not in cache
             binding.EmptyFileText.setVisibility(View.GONE);
+            binding.transcribeButton.setVisibility(View.GONE);
             // Open the file and show the text in the editableTextArea
             StringBuilder text = getStringBuilder(filePath);
 
@@ -271,6 +284,10 @@ public class DetailFragment extends Fragment {
             switch (currentShownFile) {
                 case "transcript":
                     currentFileText = getResources().getString(R.string.transcript_file_tab);
+
+                    // Temporary button to transcribe the audio
+                    Log.d("DetailFragment", "Transcribe button visible");
+                    binding.transcribeButton.setVisibility(View.VISIBLE);
                     break;
                 case "userText":
                     currentFileText = getResources().getString(R.string.notes_file_tab);
@@ -280,8 +297,8 @@ public class DetailFragment extends Fragment {
                     break;
             }
 
-            binding.EmptyFileText.setVisibility(View.VISIBLE);
-            binding.EmptyFileText.setText(getResources().getString(R.string.file_not_available, currentFileText));
+//            binding.EmptyFileText.setVisibility(View.VISIBLE);
+//            binding.EmptyFileText.setText(getResources().getString(R.string.file_not_available, currentFileText));
         }
 
         Log.d("DetailFragment", "cache file after: " + fileCache);

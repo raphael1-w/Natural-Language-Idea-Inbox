@@ -1,7 +1,12 @@
 package com.example.myapplication;
 
+import static android.Manifest.permission.FOREGROUND_SERVICE;
+import static android.Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC;
 import static android.Manifest.permission.POST_NOTIFICATIONS;
 
+import static androidx.core.content.ContentProviderCompat.requireContext;
+
+import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -95,6 +100,15 @@ public class MainActivity extends AppCompatActivity implements KeyboardLayoutLis
         // Setup keyboard listener
         keyboardLayoutListener = new KeyboardLayoutListener(binding.getRoot(), this);
         keyboardLayoutListener.attach();
+
+        // Request permissions, if not granted quit the app
+        if (ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(this, new String[]{POST_NOTIFICATIONS}, 101);
+        }
+        if (Build.VERSION.SDK_INT >= 34 && ContextCompat.checkSelfPermission(this, FOREGROUND_SERVICE) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(this, new String[]{FOREGROUND_SERVICE}, 102);
+        }
+
     }
 
     @Override

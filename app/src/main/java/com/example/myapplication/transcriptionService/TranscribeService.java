@@ -5,10 +5,14 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
 import android.os.Binder;
-import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
@@ -17,9 +21,12 @@ import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.support.common.FileUtil;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,6 +53,9 @@ public class TranscribeService extends Service {
     private Interpreter tfliteInterpreter;
     private WhisperTokenizer tokenizer;
     private TranscriptionCallback callback;
+    private int id;
+    private String audioFilePath;
+
 
     public class LocalBinder extends Binder {
         TranscribeService getService() {
@@ -60,24 +70,51 @@ public class TranscribeService extends Service {
     }
 
     @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null) {
+            id = intent.getIntExtra("id", 0);
+            audioFilePath = intent.getStringExtra("audioFilePath");
+        }
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
     public void onCreate() {
         super.onCreate();
+        Log.d("TranscribeService", "Service created");
         executor = Executors.newSingleThreadExecutor();
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, createNotification("Initializing transcription service..."));
         initializeModel();
     }
 
+    private static MappedByteBuffer loadModelFile(AssetManager assets, String modelFilename)
+            throws IOException {
+        AssetFileDescriptor fileDescriptor = assets.openFd(modelFilename);
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel();
+        long startOffset = fileDescriptor.getStartOffset();
+        long declaredLength = fileDescriptor.getDeclaredLength();
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+    }
+
     private void initializeModel() {
         try {
             // Load TFLite model
-            MappedByteBuffer tfliteModel = FileUtil.loadMappedFile(this, "whisper-base-external.tflite");
+            Log.d(TAG, "Loading TFLite model...");
+//            MappedByteBuffer tfliteModel = FileUtil.loadMappedFile(this, "whisper-base.tflite");
+//            File tfliteModel = new File(getFilesDir(), "app/src/main/ml/whisper.tflite");
             Interpreter.Options options = new Interpreter.Options();
-            tfliteInterpreter = new Interpreter(tfliteModel, options);
+            tfliteInterpreter = new Interpreter(loadModelFile(getAssets(),"whisper.tflite"), options);
 
             // Initialize tokenizer
+            Log.d(TAG, "Initializing tokenizer...");
             String tokenizerPath = new File(getFilesDir(), "whisper-base").getAbsolutePath();
             tokenizer = new WhisperTokenizer(tokenizerPath);
+
+            // Start transcription
+            Log.d(TAG, "Starting transcription...");
+            startTranscription(audioFilePath);
         } catch (IOException e) {
             Log.e(TAG, "Error initializing model", e);
         } catch (JSONException e) {
@@ -109,7 +146,7 @@ public class TranscribeService extends Service {
         updateNotification("Loading audio file...");
         float[] audio = loadAndResampleAudio(audioPath);
 
-        List<float[]> chunks = createChunks(audio);
+        List<float[]> chunks = calculateAndCreateChunks(audio);
         List<String> transcriptions = new ArrayList<>();
         String previousTranscript = "";
 
@@ -141,14 +178,104 @@ public class TranscribeService extends Service {
         return finalTranscript;
     }
 
-    private float[] loadAndResampleAudio(String audioPath) throws IOException {
-        // Note: You'll need to implement audio loading and resampling
-        // This could use Android's MediaExtractor or a library like FFmpeg
-        // For now, this is a placeholder
-        throw new UnsupportedOperationException("Audio loading not implemented");
+    private float[] loadAndResampleAudio(String audioPath) {
+        try {
+            // Create MediaExtractor to read the audio file
+            MediaExtractor extractor = new MediaExtractor();
+            extractor.setDataSource(audioPath);
+
+            // Select the first audio track
+            int audioTrackIndex = -1;
+            int i = 0;
+            MediaFormat format;
+            while (i < extractor.getTrackCount()) {
+                format = extractor.getTrackFormat(i);
+                String mime = format.getString(MediaFormat.KEY_MIME);
+                if (mime.startsWith("audio/")) {
+                    audioTrackIndex = i;
+                    break;
+                }
+                i++;
+            }
+
+            if (audioTrackIndex == -1) {
+                throw new IOException("No audio track found");
+            }
+
+            extractor.selectTrack(audioTrackIndex);
+            format = extractor.getTrackFormat(audioTrackIndex);
+
+            // Get audio properties
+            int channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
+            int originalSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
+            long duration = format.getLong(MediaFormat.KEY_DURATION) / 1000; // in microseconds
+            int numSamples = (int) (duration * SAMPLE_RATE / 1_000_000.0);
+
+            // Create buffer for raw audio data
+            ByteBuffer inputBuffer = ByteBuffer.allocate(numSamples * 2); // 16-bit audio = 2 bytes per sample
+            int sampleSize;
+            while ((sampleSize = extractor.readSampleData(inputBuffer, 0)) >= 0) {
+                extractor.advance();
+            }
+
+            // Convert to float array
+            inputBuffer.rewind();
+            float[] audioData = new float[numSamples];
+            for (i = 0; i < numSamples && inputBuffer.hasRemaining(); i++) {
+                // Convert 16-bit PCM to float in range [-1, 1]
+                short sample = inputBuffer.getShort();
+                audioData[i] = sample / 32768.0f;
+            }
+
+            extractor.release();
+
+            // Resample if necessary
+            if (originalSampleRate != SAMPLE_RATE) {
+                audioData = resampleAudio(audioData, originalSampleRate, SAMPLE_RATE);
+            }
+
+            // Convert stereo to mono if necessary
+            if (channels == 2) {
+                audioData = convertStereoToMono(audioData);
+            }
+
+            return audioData;
+
+        } catch (IOException e) {
+            Log.e(TAG, "Error loading audio file", e);
+            return new float[0];
+        }
     }
 
-    private List<float[]> createChunks(float[] audio) {
+    private float[] resampleAudio(float[] input, int originalRate, int targetRate) {
+        // Simple linear interpolation resampling
+        int outputLength = (int) ((long) input.length * targetRate / originalRate);
+        float[] output = new float[outputLength];
+
+        for (int i = 0; i < outputLength; i++) {
+            float position = i * ((float) originalRate / targetRate);
+            int index = (int) position;
+            float fraction = position - index;
+
+            if (index >= input.length - 1) {
+                output[i] = input[input.length - 1];
+            } else {
+                output[i] = input[index] * (1 - fraction) + input[index + 1] * fraction;
+            }
+        }
+
+        return output;
+    }
+
+    private float[] convertStereoToMono(float[] stereoData) {
+        float[] monoData = new float[stereoData.length / 2];
+        for (int i = 0; i < monoData.length; i++) {
+            monoData[i] = (stereoData[i * 2] + stereoData[i * 2 + 1]) / 2.0f;
+        }
+        return monoData;
+    }
+
+    private List<float[]> calculateAndCreateChunks(float[] audio) {
         List<float[]> chunks = new ArrayList<>();
         int start = 0;
 
@@ -180,11 +307,33 @@ public class TranscribeService extends Service {
             // Convert audio to mel spectrogram
             float[][] melSpec = computeMelSpectrogram(audioChunk);
 
-            // Prepare input tensor
-            float[][][][] inputTensor = new float[1][N_MELS][3000][1];
+            // Pad or trim to exactly 3000 frames
+            int targetLength = 3000;
+            float[][] paddedMelSpec = new float[N_MELS][targetLength];
+
+            // Copy and pad/trim to target length
             for (int i = 0; i < N_MELS; i++) {
-                for (int j = 0; j < Math.min(melSpec[i].length, 3000); j++) {
-                    inputTensor[0][i][j][0] = melSpec[i][j];
+                if (Math.min(melSpec[i].length, targetLength) >= 0)
+                    System.arraycopy(melSpec[i], 0, paddedMelSpec[i], 0, Math.min(melSpec[i].length, targetLength));
+            }
+
+            // Convert to log mel spectrogram and normalize
+            float[][][] logMelSpec = new float[1][N_MELS][targetLength];
+            for (int i = 0; i < N_MELS; i++) {
+                for (int j = 0; j < targetLength; j++) {
+                    // Apply log10 with clipping to avoid -inf
+                    float value = Math.max(paddedMelSpec[i][j], 1e-10f);
+                    float logValue = (float)Math.log10(value);
+                    // Normalize with the same formula as Python
+                    logMelSpec[0][i][j] = (logValue + 4.0f) / 4.0f;
+                }
+            }
+
+            // Prepare input tensor (add channel dimension)
+            float[][][][] inputTensor = new float[1][N_MELS][targetLength][1];
+            for (int i = 0; i < N_MELS; i++) {
+                for (int j = 0; j < targetLength; j++) {
+                    inputTensor[0][i][j][0] = logMelSpec[0][i][j];
                 }
             }
 
@@ -318,6 +467,8 @@ public class TranscribeService extends Service {
 
     @Override
     public void onDestroy() {
+        Log.d("TranscribeService", "Service destroyed");
+
         super.onDestroy();
         if (tfliteInterpreter != null) {
             tfliteInterpreter.close();
@@ -325,5 +476,6 @@ public class TranscribeService extends Service {
         if (executor != null) {
             executor.shutdown();
         }
+
     }
 }
