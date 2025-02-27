@@ -45,7 +45,7 @@ public class TranscribeService extends Service {
     private static final int HOP_LENGTH = 160;
     private static final int CHUNK_LENGTH = 30;
     private static final int N_SAMPLES = SAMPLE_RATE * CHUNK_LENGTH;
-    private static final int CHUNK_OVERLAP = 6;
+    private static final int CHUNK_OVERLAP = 5;
     private static final int N_SAMPLES_OVERLAP = SAMPLE_RATE * CHUNK_OVERLAP;
     private final IBinder binder = new LocalBinder();
     private ExecutorService executor;
@@ -208,13 +208,14 @@ public class TranscribeService extends Service {
             for (int i = 0; i < extractor.getTrackCount(); i++) {
                 format = extractor.getTrackFormat(i);
                 String mime = format.getString(MediaFormat.KEY_MIME);
+                assert mime != null;
                 if (mime.startsWith("audio/")) {
                     audioTrackIndex = i;
                     break;
                 }
             }
 
-            if (audioTrackIndex == -1 || format == null) {
+            if (audioTrackIndex == -1) {
                 throw new IOException("No audio track found");
             }
 
@@ -234,10 +235,7 @@ public class TranscribeService extends Service {
                 return decodeCompressedAudio(extractor, format, durationSec, originalSampleRate, channels);
             }
 
-            // Rest of code for uncompressed audio (unlikely path)
-            // ...
-
-            Log.e(TAG, "Uncompressed audio format detected, which is unusual. Using fallback method.");
+            Log.e(TAG, "Uncompressed audio format detected.");
             return new float[0];
         } catch (IOException e) {
             Log.e(TAG, "Error loading audio file", e);
@@ -364,12 +362,11 @@ public class TranscribeService extends Service {
         int expectedSamples = (int)(sampleRate * durationSec);
 
         if (audio.length >= expectedSamples) {
-            // We already have enough samples, just return the correct length
             Log.d(TAG, "Audio already matches expected duration");
             return audio;
         }
 
-        // We need to extend the audio to match the expected duration
+        // Extend the audio to match the expected duration
         Log.d(TAG, String.format("Extending audio from %d to %d samples to match expected duration",
                 audio.length, expectedSamples));
 
@@ -429,7 +426,7 @@ public class TranscribeService extends Service {
     }
 
     private void resampleChannel(float[] input, float[] output, int framesIn, int framesOut, int originalRate, int targetRate) {
-        // Similar to librosa's resample functionality, using linear interpolation
+        // Resample using linear interpolation
         double ratio = (double) originalRate / targetRate;
 
         for (int i = 0; i < framesOut; i++) {
@@ -487,12 +484,6 @@ public class TranscribeService extends Service {
         return chunks;
     }
 
-    private float[] padAudio(float[] audio) {
-        float[] padded = new float[N_SAMPLES];
-        System.arraycopy(audio, 0, padded, 0, audio.length);
-        return padded;
-    }
-
     private String processAudioChunk(float[] audioChunk) {
         try {
             // Convert audio to mel spectrogram
@@ -500,7 +491,7 @@ public class TranscribeService extends Service {
             MelSpectrogram melSpectrogram = new MelSpectrogram();
             double[][] melSpec = melSpectrogram.melSpectrogram(audioChunk);
 
-            Log.d(TAG, "Mel spectrogram: " + Arrays.toString(melSpec[0]));
+//            Log.d(TAG, "Mel spectrogram: " + Arrays.toString(melSpec[0]));
 
             // Pad or trim to exactly 3000 frames
             int targetFrames = 3000;
@@ -518,7 +509,7 @@ public class TranscribeService extends Service {
             }
 
             // Log normalized values
-            Log.d(TAG, "Normalized mel spectrogram: " + Arrays.deepToString(inputTensor[0]));
+//            Log.d(TAG, "Normalized mel spectrogram: " + Arrays.deepToString(inputTensor[0]));
 
             // Run inference
             Log.d(TAG, "Running inference...");
@@ -526,7 +517,7 @@ public class TranscribeService extends Service {
             tfliteInterpreter.run(inputTensor, outputTensor);
 
             // Log output tokens
-            Log.d(TAG, "Output tokens: " + Arrays.toString(outputTensor[0]));
+//            Log.d(TAG, "Output tokens: " + Arrays.toString(outputTensor[0]));
 
             // Process tokens
             Log.d(TAG, "Processing output tokens...");
@@ -579,7 +570,6 @@ public class TranscribeService extends Service {
 
     private double calculateSimilarity(String s1, String s2) {
         // Implement a simple similarity metric
-        // This is a simplified version of SequenceMatcher
         int maxLength = Math.max(s1.length(), s2.length());
         if (maxLength == 0) return 1.0;
         return (double) (maxLength - levenshteinDistance(s1, s2)) / maxLength;
