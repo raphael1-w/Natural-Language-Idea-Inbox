@@ -17,6 +17,8 @@ playServicesTfliteJava = "16.4.0"
 roomCommon = "2.6.1"
 roomRuntime = "2.6.1"
 roomCompilerProcessingTesting = "2.6.1"
+tarsosdsp = "2.4"
+tarsosdspVersion = "2.4"
 tensorflowLite = "2.7.0"
 tensorflowLiteGpuVersion = "2.16.1"
 tensorflowLiteSupport = "0.3.0"
@@ -28,6 +30,7 @@ tensorflowLiteSupportVersion = "0.4.4"
 tensorflowLiteVersion = "2.16.1"
 
 [libraries]
+dsp-tarsosdsp = { module = "be.tarsos.dsp:TarsosDSP", version.ref = "tarsosdspVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -48,6 +51,7 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCom
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntime" }
 room-testing = { module = "androidx.room:room-testing", version.ref = "roomCommon" }
 room-compiler-processing-testing = { group = "androidx.room", name = "room-compiler-processing-testing", version.ref = "roomCompilerProcessingTesting" }
+tarsosdsp = { module = "org.tarsos.dsp:TarsosDSP", version.ref = "tarsosdsp" }
 tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
 tensorflow-lite-gpu-v2161 = { module = "org.tensorflow:tensorflow-lite-gpu", version.ref = "tensorflowLiteGpuVersion" }
 tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }

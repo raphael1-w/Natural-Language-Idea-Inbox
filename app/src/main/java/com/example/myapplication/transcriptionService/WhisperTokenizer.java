@@ -16,7 +16,6 @@ import java.util.*;
 public class WhisperTokenizer {
     private final AssetManager assetManager;
     private static final String TAG = "SimpleWhisperTokenizer";
-
     private Map<String, Integer> vocab;
     private Map<Integer, String> reverseVocab;
     private Set<Integer> specialTokensIds;

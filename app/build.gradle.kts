@@ -64,4 +64,9 @@ dependencies {
     implementation(libs.play.services.tflite.java)
     // Optional: include LiteRT Support Library
     implementation(libs.play.services.tflite.support)
+
+    implementation("be.tarsos.dsp:core:2.5")
+    implementation("be.tarsos.dsp:jvm:2.5")
+
+    implementation("org.apache.commons:commons-math3:3.6.1")
 }

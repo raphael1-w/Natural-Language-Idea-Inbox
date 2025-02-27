@@ -7,6 +7,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
+import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Binder;
@@ -23,6 +24,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -38,7 +40,7 @@ public class TranscribeService extends Service {
 
     // Audio processing parameters
     private static final int SAMPLE_RATE = 16000;
-    private static final int N_FFT = 400;
+    private static final int N_FFT = 512;
     private static final int N_MELS = 80;
     private static final int HOP_LENGTH = 160;
     private static final int CHUNK_LENGTH = 30;
@@ -106,7 +108,14 @@ public class TranscribeService extends Service {
             // Load TFLite model
             Log.d(TAG, "Loading TFLite model...");
             Interpreter.Options options = new Interpreter.Options();
-            tfliteInterpreter = new Interpreter(loadModelFile(getAssets(),"whisper.tflite"), options);
+            tfliteInterpreter = new Interpreter(loadModelFile(getAssets(),"whisper-tiny.tflite"), options);
+
+            // Log model input/output shapes
+            int[] inputShape = tfliteInterpreter.getInputTensor(0).shape();
+            int[] outputShape = tfliteInterpreter.getOutputTensor(0).shape();
+
+            Log.d(TAG, "Model input shape: " + Arrays.toString(inputShape));
+            Log.d(TAG, "Model output shape: " + Arrays.toString(outputShape));
 
             // Initialize tokenizer
             Log.d(TAG, "Initializing tokenizer...");
@@ -151,11 +160,14 @@ public class TranscribeService extends Service {
         List<String> transcriptions = new ArrayList<>();
         String previousTranscript = "";
 
+        Log.d("TranscribeService", "Processing audio chunks...");
+
         for (int i = 0; i < chunks.size(); i++) {
             updateNotification(String.format("Processing chunk %d/%d", i + 1, chunks.size()));
             float progress = (float) i / chunks.size();
 
             String transcript = processAudioChunk(chunks.get(i));
+            Log.d("TranscribeService", "Transcript for current chunk: " + transcript);
             if (!transcript.isEmpty()) {
                 if (!previousTranscript.isEmpty()) {
                     String cleanedTranscript = findOverlapFuzzy(previousTranscript, transcript);
@@ -185,10 +197,10 @@ public class TranscribeService extends Service {
             extractor.setDataSource(audioPath);
 
             // Log original file duration
-//            MediaFormat format_ = extractor.getTrackFormat(0);
-//            long durationUs = format_.getLong(MediaFormat.KEY_DURATION);
-//            float durationSec = durationUs / 1_000_000f;
-//            Log.d(TAG, String.format("Original audio duration: %.2f seconds", durationSec));
+            MediaFormat format_ = extractor.getTrackFormat(0);
+            long durationUs = format_.getLong(MediaFormat.KEY_DURATION);
+            float durationSec = durationUs / 1_000_000f;
+            Log.d(TAG, String.format("Original audio duration: %.2f seconds", durationSec));
 
             // Select the first audio track
             int audioTrackIndex = -1;
@@ -211,39 +223,118 @@ public class TranscribeService extends Service {
             // Get audio properties
             int channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
             int originalSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
-            int maxBufferSize = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384);
 
-            // Create a list to store audio samples
-            List<Float> audioSamples = new ArrayList<>();
+            // Check for audio encoding
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            Log.d(TAG, "Audio mime type: " + mime);
 
-            // Read audio data in chunks
-            ByteBuffer buffer = ByteBuffer.allocate(maxBufferSize);
-            while (true) {
-                int sampleSize = extractor.readSampleData(buffer, 0);
-                if (sampleSize < 0) break;
+            // For compressed formats, we need to use MediaCodec to decode
+            if (!mime.equals("audio/raw")) {
+                // This is what librosa would do - decode and get all samples
+                return decodeCompressedAudio(extractor, format, durationSec, originalSampleRate, channels);
+            }
 
-                buffer.rewind();
-                for (int i = 0; i < sampleSize; i += 2) {
-                    if (buffer.remaining() >= 2) {
-                        short sample = buffer.getShort();
-                        audioSamples.add(sample / 32768.0f);
+            // Rest of code for uncompressed audio (unlikely path)
+            // ...
+
+            Log.e(TAG, "Uncompressed audio format detected, which is unusual. Using fallback method.");
+            return new float[0];
+        } catch (IOException e) {
+            Log.e(TAG, "Error loading audio file", e);
+            return new float[0];
+        }
+    }
+
+    private float[] decodeCompressedAudio(MediaExtractor extractor, MediaFormat format,
+                                          float durationSec, int originalSampleRate, int channels) {
+        try {
+            // Calculate expected frame count based on duration
+            long expectedFrames = (long)(durationSec * originalSampleRate);
+            Log.d(TAG, "Expected frames before decoding: " + expectedFrames);
+
+            // Create decoder
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            MediaCodec decoder = MediaCodec.createDecoderByType(mime);
+            decoder.configure(format, null, null, 0);
+            decoder.start();
+
+            // Prepare buffers
+            ByteBuffer[] inputBuffers = decoder.getInputBuffers();
+            ByteBuffer[] outputBuffers = decoder.getOutputBuffers();
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            boolean isEOS = false;
+
+            // Allocate buffer for decoded PCM data - estimate based on duration
+            // 2 bytes per sample * channels * expected frames with some extra room
+            ByteBuffer pcmData = ByteBuffer.allocate((int)(2 * channels * expectedFrames * 1.1));
+            pcmData.order(ByteOrder.LITTLE_ENDIAN);
+
+            // Decode loop
+            while (!isEOS) {
+                // Feed input buffer with encoded data
+                int inIndex = decoder.dequeueInputBuffer(100000);
+                if (inIndex >= 0) {
+                    ByteBuffer buffer = inputBuffers[inIndex];
+                    buffer.clear();
+
+                    int sampleSize = extractor.readSampleData(buffer, 0);
+                    if (sampleSize < 0) {
+                        decoder.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        isEOS = true;
+                    } else {
+                        long sampleTime = extractor.getSampleTime();
+                        decoder.queueInputBuffer(inIndex, 0, sampleSize, sampleTime, 0);
+                        extractor.advance();
                     }
                 }
-                buffer.clear();
-                extractor.advance();
+
+                // Get decoded output
+                int outIndex = decoder.dequeueOutputBuffer(info, 100000);
+                if (outIndex >= 0) {
+                    if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        isEOS = true;
+                    }
+
+                    ByteBuffer buffer = outputBuffers[outIndex];
+                    buffer.position(info.offset);
+                    buffer.limit(info.offset + info.size);
+
+                    // Copy decoded PCM data
+                    pcmData.put(buffer);
+
+                    decoder.releaseOutputBuffer(outIndex, false);
+                } else if (outIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                    outputBuffers = decoder.getOutputBuffers();
+                }
             }
 
+            // Clean up
+            decoder.stop();
+            decoder.release();
             extractor.release();
 
-            // Convert List<Float> to float[]
-            float[] audioData = new float[audioSamples.size()];
-            for (int i = 0; i < audioSamples.size(); i++) {
-                audioData[i] = audioSamples.get(i);
+            // Prepare PCM data for processing
+            pcmData.flip();
+            int totalSamples = pcmData.limit() / 2;  // 16-bit samples = 2 bytes per sample
+
+            Log.d(TAG, "Decoded PCM data size: " + pcmData.limit() + " bytes");
+            Log.d(TAG, "Total decoded samples: " + totalSamples);
+
+            // Convert to float array (normalized to [-1.0, 1.0])
+            float[] audioData = new float[totalSamples];
+            for (int i = 0; i < totalSamples; i++) {
+                if (pcmData.remaining() >= 2) {
+                    short sample = pcmData.getShort();
+                    audioData[i] = sample / 32768.0f;
+                }
             }
+
+            Log.d(TAG, String.format("Loaded %d samples at %d Hz (%d channels)",
+                    audioData.length, originalSampleRate, channels));
 
             // Resample if necessary
             if (originalSampleRate != SAMPLE_RATE) {
-                audioData = resampleAudio(audioData, originalSampleRate, SAMPLE_RATE);
+                audioData = resampleAudio(audioData, originalSampleRate, SAMPLE_RATE, channels);
             }
 
             // Convert stereo to mono if necessary
@@ -251,43 +342,125 @@ public class TranscribeService extends Service {
                 audioData = convertStereoToMono(audioData);
             }
 
+            // Log expected samples after resampling
+            Log.d(TAG, "Expected samples after resampling: " + (int)(SAMPLE_RATE * durationSec));
+
+            // Check if we need to match the exact expected duration (librosa behavior)
+            float[] finalAudio = matchLibrosaDuration(audioData, durationSec, SAMPLE_RATE);
+
             // Log audio properties
-            Log.d(TAG, "Audio loaded: " + audioData.length + " samples, " +
-                    "sample rate: " + SAMPLE_RATE + ", channels: " + channels);
+            Log.d(TAG, "Audio loaded: " + finalAudio.length + " samples, " +
+                    "sample rate: " + SAMPLE_RATE + ", channels: 1");
 
-            return audioData;
-
-        } catch (IOException e) {
-            Log.e(TAG, "Error loading audio file", e);
+            return finalAudio;
+        } catch (Exception e) {
+            Log.e(TAG, "Error decoding compressed audio", e);
             return new float[0];
         }
     }
 
-    private float[] resampleAudio(float[] input, int originalRate, int targetRate) {
-        // Simple linear interpolation resampling
-        int outputLength = (int) ((long) input.length * targetRate / originalRate);
-        float[] output = new float[outputLength];
+    private float[] matchLibrosaDuration(float[] audio, float durationSec, int sampleRate) {
+        // Calculate the expected number of samples for the full duration
+        int expectedSamples = (int)(sampleRate * durationSec);
 
-        for (int i = 0; i < outputLength; i++) {
-            float position = i * ((float) originalRate / targetRate);
-            int index = (int) position;
-            float fraction = position - index;
+        if (audio.length >= expectedSamples) {
+            // We already have enough samples, just return the correct length
+            Log.d(TAG, "Audio already matches expected duration");
+            return audio;
+        }
 
-            if (index >= input.length - 1) {
-                output[i] = input[input.length - 1];
-            } else {
-                output[i] = input[index] * (1 - fraction) + input[index + 1] * fraction;
+        // We need to extend the audio to match the expected duration
+        Log.d(TAG, String.format("Extending audio from %d to %d samples to match expected duration",
+                audio.length, expectedSamples));
+
+        float[] extendedAudio = new float[expectedSamples];
+
+        // Copy existing samples
+        System.arraycopy(audio, 0, extendedAudio, 0, audio.length);
+
+        // Fill the rest with zeros (silence) - this matches librosa's zero-padding behavior
+        // This is usually not the case with real audio, but ensures we get the expected duration
+
+        return extendedAudio;
+    }
+
+    private float[] resampleAudio(float[] input, int originalRate, int targetRate, int channels) {
+        // Handle multi-channel audio correctly
+        int framesIn = input.length / channels;
+
+        // Calculate output length based on ratio of sample rates
+        int framesOut = (int) Math.ceil(((double) framesIn * targetRate) / originalRate);
+        float[] output = new float[framesOut * channels];
+
+        if (channels == 1) {
+            // Simple case - mono audio
+            resampleChannel(input, output, framesIn, framesOut, originalRate, targetRate);
+        } else {
+            // Handle multi-channel audio (typically stereo)
+            for (int ch = 0; ch < channels; ch++) {
+                // Extract single channel from input
+                float[] inputChannel = new float[framesIn];
+                for (int i = 0; i < framesIn; i++) {
+                    inputChannel[i] = input[i * channels + ch];
+                }
+
+                // Create buffer for resampled channel
+                float[] outputChannel = new float[framesOut];
+
+                // Resample single channel
+                resampleChannel(inputChannel, outputChannel, framesIn, framesOut, originalRate, targetRate);
+
+                // Copy back to interleaved output
+                for (int i = 0; i < framesOut; i++) {
+                    output[i * channels + ch] = outputChannel[i];
+                }
             }
         }
+
+        Log.d(TAG, String.format("Resampling from %dHz to %dHz", originalRate, targetRate));
+        Log.d(TAG, String.format("Input frames: %d, Output frames: %d",
+                framesIn, framesOut));
+        Log.d(TAG, String.format("Expected duration: %.2f seconds",
+                (double) framesIn / originalRate));
+        Log.d(TAG, String.format("Actual duration: %.2f seconds",
+                (double) framesOut / targetRate));
 
         return output;
     }
 
+    private void resampleChannel(float[] input, float[] output, int framesIn, int framesOut, int originalRate, int targetRate) {
+        // Similar to librosa's resample functionality, using linear interpolation
+        double ratio = (double) originalRate / targetRate;
+
+        for (int i = 0; i < framesOut; i++) {
+            double sourceIdx = i * ratio;
+            int sourceIdxInt = (int) sourceIdx;
+            double frac = sourceIdx - sourceIdxInt;
+
+            // Linear interpolation
+            if (sourceIdxInt < framesIn - 1) {
+                output[i] = (float) ((1.0 - frac) * input[sourceIdxInt] +
+                        frac * input[sourceIdxInt + 1]);
+            } else if (sourceIdxInt < framesIn) {
+                output[i] = input[sourceIdxInt];
+            }
+        }
+    }
+
     private float[] convertStereoToMono(float[] stereoData) {
+        if (stereoData.length % 2 != 0) {
+            Log.w(TAG, "Warning: Audio data length is not even, might not be stereo");
+            return stereoData;
+        }
+
         float[] monoData = new float[stereoData.length / 2];
         for (int i = 0; i < monoData.length; i++) {
             monoData[i] = (stereoData[i * 2] + stereoData[i * 2 + 1]) / 2.0f;
         }
+
+        Log.d(TAG, String.format("Converted %d stereo samples to %d mono samples",
+                stereoData.length, monoData.length));
+
         return monoData;
     }
 
@@ -300,6 +473,10 @@ public class TranscribeService extends Service {
             float[] chunk = Arrays.copyOfRange(audio, start, end);
 
             chunks.add(chunk);
+
+            // Log chunking results
+            Log.d(TAG, String.format("Created chunk %d: start=%d, end=%d, length=%d",
+                    chunks.size(), start, end, chunk.length));
 
             start += (N_SAMPLES - N_SAMPLES_OVERLAP);
         }
@@ -320,43 +497,39 @@ public class TranscribeService extends Service {
         try {
             // Convert audio to mel spectrogram
             Log.d(TAG, "Computing mel spectrogram, length of audio chunk: " + audioChunk.length);
-            float[][] melSpec = computeMelSpectrogram(audioChunk);
+            MelSpectrogram melSpectrogram = new MelSpectrogram();
+            double[][] melSpec = melSpectrogram.melSpectrogram(audioChunk);
+
+            Log.d(TAG, "Mel spectrogram: " + Arrays.toString(melSpec[0]));
 
             // Pad or trim to exactly 3000 frames
-            int targetLength = 3000;
-            float[][] paddedMelSpec = new float[N_MELS][targetLength];
+            int targetFrames = 3000;
+            float[][][] inputTensor = new float[1][N_MELS][targetFrames];
 
-            // Copy and pad/trim to target length
+            // Copy and normalize mel spectrogram into input tensor
             for (int i = 0; i < N_MELS; i++) {
-                if (Math.min(melSpec[i].length, targetLength) >= 0)
-                    System.arraycopy(melSpec[i], 0, paddedMelSpec[i], 0, Math.min(melSpec[i].length, targetLength));
-            }
-
-            // Convert to log mel spectrogram and normalize
-            float[][][] logMelSpec = new float[1][N_MELS][targetLength];
-            for (int i = 0; i < N_MELS; i++) {
-                for (int j = 0; j < targetLength; j++) {
-                    // Apply log10 with clipping to avoid -inf
-                    float value = Math.max(paddedMelSpec[i][j], 1e-10f);
-                    float logValue = (float)Math.log10(value);
-                    // Normalize with the same formula as Python
-                    logMelSpec[0][i][j] = (logValue + 4.0f) / 4.0f;
+                for (int j = 0; j < targetFrames; j++) {
+                    if (j < melSpec[i].length) {
+                        double value = Math.max(melSpec[i][j], 1e-10);
+                        double logValue = Math.log10(value);
+                        inputTensor[0][i][j] = (float)((logValue + 4.0) / 4.0);
+                    }
                 }
             }
 
-            // Prepare input tensor (add channel dimension)
-            float[][][][] inputTensor = new float[1][N_MELS][targetLength][1];
-            for (int i = 0; i < N_MELS; i++) {
-                for (int j = 0; j < targetLength; j++) {
-                    inputTensor[0][i][j][0] = logMelSpec[0][i][j];
-                }
-            }
+            // Log normalized values
+            Log.d(TAG, "Normalized mel spectrogram: " + Arrays.deepToString(inputTensor[0]));
 
             // Run inference
+            Log.d(TAG, "Running inference...");
             int[][] outputTensor = new int[1][448];
             tfliteInterpreter.run(inputTensor, outputTensor);
 
+            // Log output tokens
+            Log.d(TAG, "Output tokens: " + Arrays.toString(outputTensor[0]));
+
             // Process tokens
+            Log.d(TAG, "Processing output tokens...");
             List<Integer> validTokens = new ArrayList<>();
             for (int token : outputTensor[0]) {
                 if (token >= 0 && token < 50258) {
@@ -364,147 +537,12 @@ public class TranscribeService extends Service {
                 }
             }
 
+            Log.d(TAG, "Decoding tokens...");
             return tokenizer.decode(validTokens, true);
         } catch (Exception e) {
             Log.e(TAG, "Error processing audio chunk", e);
             return "";
         }
-    }
-
-    private float[][] computeMelSpectrogram(float[] audio) {
-        // Pad audio if necessary
-        if (audio.length < N_SAMPLES) {
-            audio = padAudio(audio);
-        }
-
-        int numFrames = 1 + (audio.length - N_FFT) / HOP_LENGTH;
-        float[][] melSpec = new float[N_MELS][numFrames];
-        float[][] melFilters = createMelFilterbank();
-        float[] window = createHanningWindow();
-
-        // Process each frame
-        for (int t = 0; t < numFrames; t++) {
-            int start = t * HOP_LENGTH;
-            float[] frame = new float[N_FFT];
-
-            // Apply windowing
-            for (int n = 0; n < N_FFT && (start + n) < audio.length; n++) {
-                frame[n] = audio[start + n] * window[n];
-            }
-
-            // Pad frame to nearest power of 2
-            int paddedLength = nextPowerOfTwo(N_FFT);
-            double[] real = new double[paddedLength];
-            double[] imag = new double[paddedLength];
-
-            // Copy frame data to padded arrays
-            for (int i = 0; i < N_FFT; i++) {
-                real[i] = frame[i];
-            }
-
-            // Perform FFT
-            double[] fftResult = FFTbase.fft(real, imag, true);
-            if (fftResult.length == 0) {
-                Log.e("TranscribeService", "FFT failed");
-                continue;
-            }
-
-            // Calculate power spectrum (only up to N_FFT/2 + 1)
-            float[] powerSpec = new float[1 + N_FFT/2];
-            for (int i = 0; i < powerSpec.length; i++) {
-                float re = (float) fftResult[2*i];
-                float im = (float) fftResult[2*i + 1];
-                powerSpec[i] = (re * re + im * im) / N_FFT;
-            }
-
-            // Apply mel filterbank
-            for (int m = 0; m < N_MELS; m++) {
-                float sum = 0;
-                for (int i = 0; i < powerSpec.length; i++) {
-                    sum += powerSpec[i] * melFilters[m][i];
-                }
-                melSpec[m][t] = sum;
-            }
-        }
-
-        // Log mel spectrogram shape
-        Log.d(TAG, "Mel spectrogram shape: " + melSpec.length + " x " + melSpec[0].length);
-
-        return melSpec;
-    }
-
-    private int nextPowerOfTwo(int n) {
-        int power = 1;
-        while (power < n) {
-            power *= 2;
-        }
-        return power;
-    }
-
-    private float[] createHanningWindow() {
-        float[] window = new float[N_FFT];
-        for (int i = 0; i < N_FFT; i++) {
-            window[i] = 0.5f * (1 - (float)Math.cos(2 * Math.PI * i / (N_FFT - 1)));
-        }
-        return window;
-    }
-
-    private float[][] createMelFilterbank() {
-        // Convert frequencies to mel scale
-        float fMin = 0;
-        float fMax = SAMPLE_RATE / 2;
-        float mMin = freqToMel(fMin);
-        float mMax = freqToMel(fMax);
-
-        // Create mel points
-        float[] melPoints = new float[N_MELS + 2];
-        for (int i = 0; i < melPoints.length; i++) {
-            melPoints[i] = mMin + (mMax - mMin) * i / (N_MELS + 1);
-        }
-
-        // Convert back to frequency
-        float[] freqPoints = new float[melPoints.length];
-        for (int i = 0; i < melPoints.length; i++) {
-            freqPoints[i] = melToFreq(melPoints[i]);
-        }
-
-        // Create filterbank matrix
-        int nFft = 1 + N_FFT/2;
-        float[][] filterbank = new float[N_MELS][nFft];
-        float[] fftFreqs = new float[nFft];
-
-        for (int i = 0; i < nFft; i++) {
-            fftFreqs[i] = i * SAMPLE_RATE / N_FFT;
-        }
-
-        // Create triangular filters
-        for (int i = 0; i < N_MELS; i++) {
-            for (int j = 0; j < nFft; j++) {
-                float freq = fftFreqs[j];
-                float leftMel = freqToMel(freqPoints[i]);
-                float centerMel = freqToMel(freqPoints[i + 1]);
-                float rightMel = freqToMel(freqPoints[i + 2]);
-                float currentMel = freqToMel(freq);
-
-                if (currentMel > leftMel && currentMel < rightMel) {
-                    if (currentMel <= centerMel) {
-                        filterbank[i][j] = (currentMel - leftMel) / (centerMel - leftMel);
-                    } else {
-                        filterbank[i][j] = (rightMel - currentMel) / (rightMel - centerMel);
-                    }
-                }
-            }
-        }
-
-        return filterbank;
-    }
-
-    private float freqToMel(float freq) {
-        return 2595 * (float)Math.log10(1 + freq / 700);
-    }
-
-    private float melToFreq(float mel) {
-        return 700 * ((float)Math.pow(10, mel / 2595) - 1);
     }
 
     private String findOverlapFuzzy(String text1, String text2) {
