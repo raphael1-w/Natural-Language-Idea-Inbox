@@ -36,4 +36,7 @@ public interface IdeasDao {
 
     @Delete
     void delete(Ideas_table idea);
+
+    @Query("UPDATE Ideas SET transcript_file_path = :transcriptFilePath WHERE id = :id")
+    void updateTranscription(int id, String transcriptFilePath);
 }

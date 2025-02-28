@@ -15,6 +15,10 @@ import android.os.IBinder;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.room.Room;
+
+import com.example.myapplication.database.AppDatabase;
+import com.example.myapplication.database.IdeasDao;
 
 import org.json.JSONException;
 import org.tensorflow.lite.Interpreter;
@@ -142,6 +146,7 @@ public class TranscribeService extends Service {
                     callback.onTranscriptionComplete(transcript);
                 }
                 Log.d("TranscribeService", "Transcription complete: " + transcript);
+                saveTranscription(transcript);
             } catch (Exception e) {
                 Log.e(TAG, "Transcription error", e);
                 if (callback != null) {
@@ -151,7 +156,7 @@ public class TranscribeService extends Service {
         });
     }
 
-    private String transcribeAudio(String audioPath) throws IOException {
+    private String transcribeAudio(String audioPath){
         updateNotification("Loading audio file...");
         Log.d("TranscribeService", "Load and resample audio file: " + audioPath);
         float[] audio = loadAndResampleAudio(audioPath);
@@ -186,9 +191,7 @@ public class TranscribeService extends Service {
             }
         }
 
-        String finalTranscript = String.join(" ", transcriptions);
-        saveTranscription(finalTranscript);
-        return finalTranscript;
+        return String.join(" ", transcriptions);
     }
 
     private float[] loadAndResampleAudio(String audioPath) {
@@ -598,11 +601,27 @@ public class TranscribeService extends Service {
     }
 
     private void saveTranscription(String transcript) {
+        AppDatabase db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "app-database").build();
+        IdeasDao ideasDao = db.ideasDao();
+
+        String transcriptFilePath = audioFilePath.replace("recordings", "transcripts")
+                .replace("_audio.m4a", "transcript.txt");
+
+        File transcriptionFile = new File(transcriptFilePath);
         try {
-            File transcriptionFile = new File(getFilesDir(), "transcription.txt");
-            try (FileOutputStream fos = new FileOutputStream(transcriptionFile)) {
-                fos.write(transcript.getBytes());
-            }
+            // Save transcription to file
+            transcriptionFile.createNewFile();
+            java.io.FileWriter writer = new java.io.FileWriter(transcriptionFile);
+            writer.write(transcript);
+            writer.close();
+            Log.d("TranscribeService", "Saved transcription to file: " + transcriptFilePath);
+
+            // Update database
+            new Thread (() -> {
+                ideasDao.updateTranscription(id, transcriptFilePath);
+                Log.d("TranscribeService", "Updated transcription in database" + id);
+            }).start();
+
         } catch (IOException e) {
             Log.e(TAG, "Error saving transcription", e);
         }

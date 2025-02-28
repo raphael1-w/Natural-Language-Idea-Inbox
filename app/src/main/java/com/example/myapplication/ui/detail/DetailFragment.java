@@ -50,7 +50,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class DetailFragment extends Fragment {
+public class DetailFragment extends Fragment implements TranscribeService.TranscriptionCallback {
     private TextView typeView, tagsView, dateView, durationView;
     private FragmentDetailBinding binding;
     private boolean isTextIdea;
@@ -583,6 +583,21 @@ public class DetailFragment extends Fragment {
         } else {
             Log.w(TAG, "File path is null or empty for: " + fileType);
         }
+    }
+
+    @Override
+    public void onTranscriptionProgress(String partialTranscript, float progress) {
+        Log.d("DetailFragment", "Transcription progress callback: " + progress);
+    }
+
+    @Override
+    public void onTranscriptionComplete(String finalTranscript) {
+        Log.d("DetailFragment", "Transcription callback: " + finalTranscript);
+    }
+
+    @Override
+    public void onTranscriptionError(String error) {
+        Log.e("DetailFragment", "Transcription error callback: " + error);
     }
 
     @Override
