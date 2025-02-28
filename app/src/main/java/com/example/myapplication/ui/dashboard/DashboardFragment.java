@@ -42,6 +42,7 @@ import com.google.android.material.button.MaterialButton;
 import java.io.File;
 import java.io.IOException;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
 
 public class DashboardFragment extends Fragment {
     private FragmentDashboardBinding binding;
@@ -186,7 +187,7 @@ public class DashboardFragment extends Fragment {
                     }
 
                     int id = insertToDatabase(fileName, date, "audio", audioFilePath, textFilePath, false);
-                    startTranscriptionService(audioFilePath, id);
+                    if (id != -1) startTranscriptionService(audioFilePath, id);
                 }
             } catch (RuntimeException e) {
                 // if no valid audio data has been received when stop() is called
@@ -253,16 +254,20 @@ public class DashboardFragment extends Fragment {
 
         idea.has_attachments = hasAttachments;
 
-        final int[] id = new int[1];
+        CompletableFuture<Integer> future = new CompletableFuture<>();
 
-        // Insert the idea into the database in a new thread
         new Thread(() -> {
-            id[0] = (int) ideasDao.insertAll(idea)[0];
-            Log.d("Database", "Inserted idea: " + idea.title);
+            int newId = (int) ideasDao.insertAll(idea)[0];
+            Log.d("Database", "Inserted idea: " + idea.title + " with id: " + newId);
+            future.complete(newId);
         }).start();
 
-        // TODO make sure the id returned is correct
-        return id[0];
+        try {
+            return future.get(); // Wait for the result
+        } catch (Exception e) {
+            Log.e("Database", "Error inserting idea", e);
+            return -1;
+        }
     }
 
     private void send() {
