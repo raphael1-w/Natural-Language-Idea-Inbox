@@ -40,6 +40,8 @@
             android:paddingHorizontal="12dp"
             android:paddingVertical="3dp"
             android:layout_margin="8dp"
+            android:layout_gravity="center"
+            android:gravity="center"
             android:orientation="vertical">
 
             <!-- Editable Text Area -->
@@ -63,20 +65,20 @@
 
             <TextView
                 android:id="@+id/EmptyFileText"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:gravity="center"
                 android:layout_gravity="center"/>
 
             <Button
-                android:id="@+id/transcribeButton"
-                style="?attr/materialIconButtonFilledStyle"
+                android:id="@+id/start_service_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:layout_gravity="center"
-                android:text="Transcribe"
-                app:icon="@drawable/ic_play"
+                android:layout_margin="12dp"
+                android:text="@string/start_transcribe_button"
+                app:icon="@drawable/ic_transcribe"
                 tools:ignore="HardcodedText"/>
         </LinearLayout>
 

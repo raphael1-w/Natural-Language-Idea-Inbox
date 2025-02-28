@@ -71,6 +71,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
     private Handler handler = new Handler();
     private Runnable updateSeekBar;
     private boolean ignoreTextChanges = false;
+    public static boolean isTranscriptionServiceStarted = false;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -190,19 +191,31 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
             }
         });
 
-        // Set up the transcribe button
-        binding.transcribeButton.setOnClickListener(v -> {
-            Log.d("DetailFragment", "Transcribe button clicked, starting transcription service");
+        // Set up the start service button
+        binding.startServiceButton.setOnClickListener(v -> {
 
-            // Bind to service first
-            Intent bindIntent = new Intent(requireContext(), TranscribeService.class);
-            requireContext().bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+            // Check which button is selected to determine the service to start
+            if (binding.segmentedButtons.getCheckedButtonId() == R.id.btn_transcript) {
+                Log.d("DetailFragment", "Transcribe button clicked, starting transcription service");
 
-            // Start the transcription service
-            Intent intent = new Intent(requireContext(), TranscribeService.class);
-            intent.putExtra("audioFilePath", recordingFilePath);
-            intent.putExtra("id", thisIdea.id);
-            requireContext().startForegroundService(intent);
+                isTranscriptionServiceStarted = true;
+                binding.startServiceButton.setVisibility(View.GONE);
+                binding.EmptyFileText.setText(getResources().getString(R.string.transcription_in_progress_message));
+
+                // Bind to service first
+                Intent bindIntent = new Intent(requireContext(), TranscribeService.class);
+                requireContext().bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+                // Start the transcription service
+                Intent intent = new Intent(requireContext(), TranscribeService.class);
+                intent.putExtra("audioFilePath", recordingFilePath);
+                intent.putExtra("id", thisIdea.id);
+                requireContext().startForegroundService(intent);
+            } else {
+                Log.d("DetailFragment", "Summarize button clicked, starting summarization service");
+                // TODO: Implement summarization service
+            }
+
         });
 
         if (!isTextIdea) {
@@ -261,6 +274,9 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
         currentShownFile = fileType;
         Log.d("DetailFragment", "cache file: " + fileCache);
         if (fileCache.containsKey(fileType)) {
+            binding.EmptyFileText.setVisibility(View.GONE);
+            binding.startServiceButton.setVisibility(View.GONE);
+
             ignoreTextChanges = true;
             binding.editableTextArea.setText(fileCache.get(fileType));
             binding.editableTextArea.setVisibility(View.VISIBLE);
@@ -270,7 +286,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
 
         } else if (filePath != null) { // If the text file is available but not in cache
             binding.EmptyFileText.setVisibility(View.GONE);
-            binding.transcribeButton.setVisibility(View.GONE);
+            binding.startServiceButton.setVisibility(View.GONE);
             // Open the file and show the text in the editableTextArea
             StringBuilder text = getStringBuilder(filePath);
 
@@ -291,22 +307,30 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
             String currentFileText = "";
             switch (currentShownFile) {
                 case "transcript":
-                    currentFileText = getResources().getString(R.string.transcript_file_tab);
+                    if (!isTranscriptionServiceStarted) { // If transcription service is not running
+                        binding.startServiceButton.setVisibility(View.VISIBLE);
+                        binding.startServiceButton.setText(getResources().getString(R.string.start_transcribe_button));
+                        currentFileText = getResources().getString(R.string.transcript_file_tab);
+                    } else {
+                        binding.startServiceButton.setVisibility(View.GONE);
+                        binding.EmptyFileText.setText(getResources().getString(R.string.transcription_in_progress_message));
+                    }
 
-                    // Temporary button to transcribe the audio
-                    Log.d("DetailFragment", "Transcribe button visible");
-                    binding.transcribeButton.setVisibility(View.VISIBLE);
                     break;
                 case "userText":
                     currentFileText = getResources().getString(R.string.notes_file_tab);
+                     binding.startServiceButton.setVisibility(View.GONE);
+                    // Don't think the above is needed cuz the text box already fills up the whole box?
                     break;
                 case "summary":
                     currentFileText = getResources().getString(R.string.summary_file_tab);
+                    // Button to summarize the text
+                    binding.startServiceButton.setVisibility(View.VISIBLE);
+                    binding.startServiceButton.setText(getResources().getString(R.string.start_summarize_button));
                     break;
             }
-
-//            binding.EmptyFileText.setVisibility(View.VISIBLE);
-//            binding.EmptyFileText.setText(getResources().getString(R.string.file_not_available, currentFileText));
+            binding.EmptyFileText.setVisibility(View.VISIBLE);
+            binding.EmptyFileText.setText(getResources().getString(R.string.file_not_available, currentFileText));
         }
 
         Log.d("DetailFragment", "cache file after: " + fileCache);
@@ -626,6 +650,8 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
             if (binding.segmentedButtons.getCheckedButtonId() == R.id.btn_transcript) {
                 showTextFiles(transcriptFilePath, "transcript");
             }
+
+            isTranscriptionServiceStarted = false;
         });
     }
 

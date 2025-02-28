@@ -604,7 +604,11 @@ public class TranscribeService extends Service {
         return prev[s2.length()];
     }
 
-    private void saveTranscription(String transcript) {
+    private void saveTranscription(String transcript) throws InterruptedException {
+        updateNotification("Saving transcription...");
+        // for testing stop for 20 sec
+        Thread.sleep(20000);
+
         AppDatabase db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "app-database").build();
         IdeasDao ideasDao = db.ideasDao();
 
