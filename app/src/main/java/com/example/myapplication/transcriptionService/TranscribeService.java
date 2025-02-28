@@ -25,7 +25,6 @@ import org.tensorflow.lite.Interpreter;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -58,22 +57,25 @@ public class TranscribeService extends Service {
     private TranscriptionCallback callback;
     private int id;
     private String audioFilePath;
+    private String transcriptFilePath;
 
 
     public class LocalBinder extends Binder {
-        TranscribeService getService() {
+        public TranscribeService getService() {
             return TranscribeService.this;
         }
     }
 
     public interface TranscriptionCallback {
         void onTranscriptionProgress(String partialTranscript, float progress);
-        void onTranscriptionComplete(String finalTranscript);
+        void onTranscriptionComplete(String transcriptFilePath);
         void onTranscriptionError(String error);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        startForeground(NOTIFICATION_ID, createNotification("Initializing transcription service..."));
+
         if (intent != null) {
             id = intent.getIntExtra("id", -1);
             audioFilePath = intent.getStringExtra("audioFilePath");
@@ -93,7 +95,6 @@ public class TranscribeService extends Service {
         Log.d("TranscribeService", "Service created");
         executor = Executors.newSingleThreadExecutor();
         createNotificationChannel();
-        startForeground(NOTIFICATION_ID, createNotification("Initializing transcription service..."));
         initializeModel();
     }
 
@@ -142,16 +143,19 @@ public class TranscribeService extends Service {
         executor.execute(() -> {
             try {
                 String transcript = transcribeAudio(audioPath);
-                if (callback != null) {
-                    callback.onTranscriptionComplete(transcript);
-                }
                 Log.d("TranscribeService", "Transcription complete: " + transcript);
                 saveTranscription(transcript);
+                if (callback != null) {
+                    updateNotification("Transcription complete! ");
+                    callback.onTranscriptionComplete(transcriptFilePath);
+                }
+                stopSelf();
             } catch (Exception e) {
                 Log.e(TAG, "Transcription error", e);
                 if (callback != null) {
                     callback.onTranscriptionError(e.getMessage());
                 }
+                stopSelf(); // stop service either way
             }
         });
     }
@@ -604,7 +608,7 @@ public class TranscribeService extends Service {
         AppDatabase db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "app-database").build();
         IdeasDao ideasDao = db.ideasDao();
 
-        String transcriptFilePath = audioFilePath.replace("recordings", "transcripts")
+        transcriptFilePath = audioFilePath.replace("recordings", "transcripts")
                 .replace("_audio.m4a", "transcript.txt");
 
         File transcriptionFile = new File(transcriptFilePath);
@@ -619,7 +623,7 @@ public class TranscribeService extends Service {
             // Update database
             new Thread (() -> {
                 ideasDao.updateTranscription(id, transcriptFilePath);
-                Log.d("TranscribeService", "Updated transcription in database" + id);
+                Log.d("TranscribeService", "Updated transcription in database: " + id);
             }).start();
 
         } catch (IOException e) {
@@ -659,6 +663,9 @@ public class TranscribeService extends Service {
     @Override
     public void onDestroy() {
         Log.d("TranscribeService", "Service destroyed");
+
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        manager.cancel(NOTIFICATION_ID);
 
         super.onDestroy();
         if (tfliteInterpreter != null) {

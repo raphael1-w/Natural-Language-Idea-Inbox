@@ -1,9 +1,13 @@
 package com.example.myapplication.ui.detail;
 
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -16,7 +20,6 @@ import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -31,12 +34,10 @@ import com.example.myapplication.databinding.FragmentDetailBinding;
 import com.example.myapplication.transcriptionService.TranscribeService;
 import com.example.myapplication.ui.home.HomeViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
-import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -53,6 +54,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DetailFragment extends Fragment implements TranscribeService.TranscriptionCallback {
     private TextView typeView, tagsView, dateView, durationView;
     private FragmentDetailBinding binding;
+    private TranscribeService transcribeService;
+    private boolean isServiceBound = false;
     private boolean isTextIdea;
     private MaterialToolbar topAppBar;
     private AppDatabase db;
@@ -190,11 +193,16 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
         // Set up the transcribe button
         binding.transcribeButton.setOnClickListener(v -> {
             Log.d("DetailFragment", "Transcribe button clicked, starting transcription service");
+
+            // Bind to service first
+            Intent bindIntent = new Intent(requireContext(), TranscribeService.class);
+            requireContext().bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
             // Start the transcription service
             Intent intent = new Intent(requireContext(), TranscribeService.class);
             intent.putExtra("audioFilePath", recordingFilePath);
             intent.putExtra("id", thisIdea.id);
-            requireContext().startService(intent);
+            requireContext().startForegroundService(intent);
         });
 
         if (!isTextIdea) {
@@ -585,28 +593,60 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
         }
     }
 
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            TranscribeService.LocalBinder binder = (TranscribeService.LocalBinder) service;
+            transcribeService = binder.getService();
+            transcribeService.setTranscriptionCallback(DetailFragment.this);
+            isServiceBound = true;
+            Log.d("DetailFragment", "Service connected");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            transcribeService = null;
+            isServiceBound = false;
+            Log.d("DetailFragment", "Service disconnected");
+        }
+    };
+
     @Override
     public void onTranscriptionProgress(String partialTranscript, float progress) {
-        Log.d("DetailFragment", "Transcription progress callback: " + progress);
+        Log.d("DetailFragmentCallback", "Transcription progress callback: " + progress);
     }
 
     @Override
-    public void onTranscriptionComplete(String finalTranscript) {
-        Log.d("DetailFragment", "Transcription callback: " + finalTranscript);
+    public void onTranscriptionComplete(String transcriptFilePath) {
+        requireActivity().runOnUiThread(() -> {
+            // Update the UI to show the transcribed text
+            this.transcriptFilePath = transcriptFilePath;
+
+            // If the transcript button is selected, show the transcribed text
+            if (binding.segmentedButtons.getCheckedButtonId() == R.id.btn_transcript) {
+                showTextFiles(transcriptFilePath, "transcript");
+            }
+        });
     }
 
     @Override
     public void onTranscriptionError(String error) {
-        Log.e("DetailFragment", "Transcription error callback: " + error);
+        Log.e("DetailFragmentCallback", "Transcription error callback: " + error);
     }
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
+        if (isServiceBound) {
+            requireContext().unbindService(serviceConnection);
+            isServiceBound = false;
+        }
+
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
         db.close();
         binding = null;
+
+        super.onDestroyView();
     }
 }
