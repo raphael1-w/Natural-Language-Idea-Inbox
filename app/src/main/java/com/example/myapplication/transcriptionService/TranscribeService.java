@@ -611,7 +611,7 @@ public class TranscribeService extends Service {
         IdeasDao ideasDao = db.ideasDao();
 
         transcriptFilePath = audioFilePath.replace("recordings", "transcripts")
-                .replace("_audio.m4a", "transcript.txt");
+                .replace("_audio.m4a", "_transcript.txt");
 
         File transcriptionFile = new File(transcriptFilePath);
         try {

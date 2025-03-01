@@ -39,4 +39,7 @@ public interface IdeasDao {
 
     @Query("UPDATE Ideas SET transcript_file_path = :transcriptFilePath WHERE id = :id")
     void updateTranscription(int id, String transcriptFilePath);
+
+    @Query("UPDATE Ideas SET transcript_file_path = :summaryFilePath WHERE id = :id")
+    void updateSummary(int id, String summaryFilePath);
 }

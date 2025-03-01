@@ -69,4 +69,6 @@ dependencies {
     implementation("be.tarsos.dsp:jvm:2.5")
 
     implementation("org.apache.commons:commons-math3:3.6.1")
+
+    implementation(libs.tasks.genai)
 }

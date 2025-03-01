@@ -31,6 +31,7 @@ import com.example.myapplication.database.AttachmentsDao;
 import com.example.myapplication.database.IdeasDao;
 import com.example.myapplication.database.Ideas_table;
 import com.example.myapplication.databinding.FragmentDetailBinding;
+import com.example.myapplication.summarizationService.SummarizeService;
 import com.example.myapplication.transcriptionService.TranscribeService;
 import com.example.myapplication.ui.home.HomeViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -51,10 +52,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class DetailFragment extends Fragment implements TranscribeService.TranscriptionCallback {
+public class DetailFragment extends Fragment implements TranscribeService.TranscriptionCallback, SummarizeService.SummarizationCallback {
     private TextView typeView, tagsView, dateView, durationView;
     private FragmentDetailBinding binding;
     private TranscribeService transcribeService;
+    private SummarizeService summarizeService;
     private boolean isServiceBound = false;
     private boolean isTextIdea;
     private MaterialToolbar topAppBar;
@@ -72,6 +74,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
     private Runnable updateSeekBar;
     private boolean ignoreTextChanges = false;
     public static boolean isTranscriptionServiceStarted = false;
+    public static boolean isSummarizationServiceStarted = false;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -204,7 +207,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
 
                 // Bind to service first
                 Intent bindIntent = new Intent(requireContext(), TranscribeService.class);
-                requireContext().bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+                requireContext().bindService(bindIntent, serviceConnectionTranscribe, Context.BIND_AUTO_CREATE);
 
                 // Start the transcription service
                 Intent intent = new Intent(requireContext(), TranscribeService.class);
@@ -213,7 +216,20 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
                 requireContext().startForegroundService(intent);
             } else {
                 Log.d("DetailFragment", "Summarize button clicked, starting summarization service");
-                // TODO: Implement summarization service
+
+                isSummarizationServiceStarted = true;
+                binding.startServiceButton.setVisibility(View.GONE);
+                binding.EmptyFileText.setText(getResources().getString(R.string.summarization_in_progress_message));
+
+                // Bind to service first
+                Intent bindIntent = new Intent(requireContext(), SummarizeService.class);
+                requireContext().bindService(bindIntent, serviceConnectionSummarize, Context.BIND_AUTO_CREATE);
+
+                // Start the transcription service
+                Intent intent = new Intent(requireContext(), SummarizeService.class);
+                intent.putExtra("transcriptFilePath", transcriptFilePath);
+                intent.putExtra("id", thisIdea.id);
+                requireContext().startForegroundService(intent);
             }
 
         });
@@ -323,10 +339,14 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
                     // Don't think the above is needed cuz the text box already fills up the whole box?
                     break;
                 case "summary":
-                    currentFileText = getResources().getString(R.string.summary_file_tab);
-                    // Button to summarize the text
-                    binding.startServiceButton.setVisibility(View.VISIBLE);
-                    binding.startServiceButton.setText(getResources().getString(R.string.start_summarize_button));
+                    if (!isSummarizationServiceStarted) { // If transcription service is not running
+                        binding.startServiceButton.setVisibility(View.VISIBLE);
+                        binding.startServiceButton.setText(getResources().getString(R.string.start_summarize_button));
+                        currentFileText = getResources().getString(R.string.summary_file_tab);
+                    } else {
+                        binding.startServiceButton.setVisibility(View.GONE);
+                        binding.EmptyFileText.setText(getResources().getString(R.string.summarization_in_progress_message));
+                    }
                     break;
             }
             binding.EmptyFileText.setVisibility(View.VISIBLE);
@@ -617,7 +637,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
         }
     }
 
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
+    private final ServiceConnection serviceConnectionTranscribe = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             TranscribeService.LocalBinder binder = (TranscribeService.LocalBinder) service;
@@ -630,6 +650,24 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
         @Override
         public void onServiceDisconnected(ComponentName name) {
             transcribeService = null;
+            isServiceBound = false;
+            Log.d("DetailFragment", "Service disconnected");
+        }
+    };
+
+    private final ServiceConnection serviceConnectionSummarize = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            SummarizeService.LocalBinder binder = (SummarizeService.LocalBinder) service;
+            summarizeService = binder.getService();
+            summarizeService.setSummarizationCallback((SummarizeService.SummarizationCallback) DetailFragment.this);
+            isServiceBound = true;
+            Log.d("DetailFragment", "Service connected");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            summarizeService = null;
             isServiceBound = false;
             Log.d("DetailFragment", "Service disconnected");
         }
@@ -656,6 +694,31 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
     }
 
     @Override
+    public void onSummarizationProgress() {
+
+    }
+
+    @Override
+    public void onSummarizationComplete(String summaryFilePath) {
+        requireActivity().runOnUiThread(() -> {
+            // Update the UI to show the transcribed text
+            this.summaryFilePath = summaryFilePath;
+
+            // If the transcript button is selected, show the transcribed text
+            if (binding.segmentedButtons.getCheckedButtonId() == R.id.btn_summary) {
+                showTextFiles(summaryFilePath, "summary");
+            }
+
+            isSummarizationServiceStarted = false;
+        });
+    }
+
+    @Override
+    public void onSummarizationError(String error) {
+
+    }
+
+    @Override
     public void onTranscriptionError(String error) {
         Log.e("DetailFragmentCallback", "Transcription error callback: " + error);
     }
@@ -663,7 +726,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
     @Override
     public void onDestroyView() {
         if (isServiceBound) {
-            requireContext().unbindService(serviceConnection);
+            requireContext().unbindService(serviceConnectionTranscribe);
             isServiceBound = false;
         }
 

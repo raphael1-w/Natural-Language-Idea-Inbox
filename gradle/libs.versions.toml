@@ -19,6 +19,7 @@ roomRuntime = "2.6.1"
 roomCompilerProcessingTesting = "2.6.1"
 tarsosdsp = "2.4"
 tarsosdspVersion = "2.4"
+tasksGenai = "0.10.21"
 tensorflowLite = "2.7.0"
 tensorflowLiteGpuVersion = "2.16.1"
 tensorflowLiteSupport = "0.3.0"
@@ -52,6 +53,7 @@ room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "
 room-testing = { module = "androidx.room:room-testing", version.ref = "roomCommon" }
 room-compiler-processing-testing = { group = "androidx.room", name = "room-compiler-processing-testing", version.ref = "roomCompilerProcessingTesting" }
 tarsosdsp = { module = "org.tarsos.dsp:TarsosDSP", version.ref = "tarsosdsp" }
+tasks-genai = { module = "com.google.mediapipe:tasks-genai", version.ref = "tasksGenai" }
 tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
 tensorflow-lite-gpu-v2161 = { module = "org.tensorflow:tensorflow-lite-gpu", version.ref = "tensorflowLiteGpuVersion" }
 tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }

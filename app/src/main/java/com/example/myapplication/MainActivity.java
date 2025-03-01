@@ -34,6 +34,8 @@ import androidx.navigation.ui.NavigationUI;
 import com.example.myapplication.databinding.ActivityMainBinding;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.navigation.NavigationBarView;
+import com.google.mediapipe.tasks.core.BaseOptions;
+
 
 import java.io.File;
 
@@ -109,6 +111,8 @@ public class MainActivity extends AppCompatActivity implements KeyboardLayoutLis
             ActivityCompat.requestPermissions(this, new String[]{FOREGROUND_SERVICE}, 102);
         }
 
+        // TODO: Set the delegate to GPU for mediapipe tasks
+        //BaseOptions baseOptions = BaseOptions.builder().useGPU().build();
     }
 
     @Override
