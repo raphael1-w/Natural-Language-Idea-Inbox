@@ -105,7 +105,7 @@ public class SummarizeService extends Service {
 
         String transcript = getTranscriptText(transcriptPath);
 
-        String modelPath = "data/local/tmp/llm_model";
+        String modelPath = "/data/local/tmp/llm_model/gemma2-2b-it-cpu-int8.task";
         String modelName = "gemma-2-2b-it-cpu-int8.task";
 
         String summarizationPrompt = "Summarize the following text: ";
@@ -113,7 +113,10 @@ public class SummarizeService extends Service {
         String results = null;
 
         LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(modelPath + "/" + modelName)
+                .setModelPath(modelPath)
+                .setMaxTokens(1024)
+                .setResultListener( (partialResult, done) ->
+                        Log.d("SummarizationService", "Partial result: " + partialResult))
                 .build();
 
         Log.d(TAG, "Summarization prompt: " + summarizationPrompt + transcript);

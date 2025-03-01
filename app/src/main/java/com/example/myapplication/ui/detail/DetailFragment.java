@@ -57,7 +57,8 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
     private FragmentDetailBinding binding;
     private TranscribeService transcribeService;
     private SummarizeService summarizeService;
-    private boolean isServiceBound = false;
+    private boolean isTranscribeServiceBound = false;
+    private boolean isSummarizeServiceBound = false;
     private boolean isTextIdea;
     private MaterialToolbar topAppBar;
     private AppDatabase db;
@@ -643,14 +644,14 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
             TranscribeService.LocalBinder binder = (TranscribeService.LocalBinder) service;
             transcribeService = binder.getService();
             transcribeService.setTranscriptionCallback(DetailFragment.this);
-            isServiceBound = true;
+            isTranscribeServiceBound = true;
             Log.d("DetailFragment", "Service connected");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             transcribeService = null;
-            isServiceBound = false;
+            isTranscribeServiceBound = false;
             Log.d("DetailFragment", "Service disconnected");
         }
     };
@@ -661,14 +662,14 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
             SummarizeService.LocalBinder binder = (SummarizeService.LocalBinder) service;
             summarizeService = binder.getService();
             summarizeService.setSummarizationCallback((SummarizeService.SummarizationCallback) DetailFragment.this);
-            isServiceBound = true;
+            isSummarizeServiceBound = true;
             Log.d("DetailFragment", "Service connected");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             summarizeService = null;
-            isServiceBound = false;
+            isSummarizeServiceBound = false;
             Log.d("DetailFragment", "Service disconnected");
         }
     };
@@ -725,9 +726,22 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
 
     @Override
     public void onDestroyView() {
-        if (isServiceBound) {
-            requireContext().unbindService(serviceConnectionTranscribe);
-            isServiceBound = false;
+        if (isTranscribeServiceBound) {
+            try {
+                requireContext().unbindService(serviceConnectionTranscribe);
+            } catch (IllegalArgumentException e) {
+                Log.e("DetailFragment", "Error unbinding transcribe service", e);
+            }
+            isTranscribeServiceBound = false;
+        }
+
+        if (isSummarizeServiceBound) {
+            try {
+                requireContext().unbindService(serviceConnectionSummarize);
+            } catch (IllegalArgumentException e) {
+                Log.e("DetailFragment", "Error unbinding summarize service", e);
+            }
+            isSummarizeServiceBound = false;
         }
 
         if (mediaPlayer != null) {
