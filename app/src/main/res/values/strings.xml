@@ -39,6 +39,6 @@
     <string name="delete_dialog_negative_dialog">Cancel</string>
     <string name="start_transcribe_button">Transcribe audio</string>
     <string name="start_summarize_button">Summarize idea</string>
-    <string name="transcription_in_progress_message">Transcribing audio …</string>
-    <string name="summarization_in_progress_message">Summarizing transcript …</string>
+    <string name="transcription_in_progress_message">Transcribing audio…</string>
+    <string name="summarization_in_progress_message">Summarizing idea…</string>
 </resources>

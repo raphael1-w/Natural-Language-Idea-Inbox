@@ -76,6 +76,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
     private boolean ignoreTextChanges = false;
     public static boolean isTranscriptionServiceStarted = false;
     public static boolean isSummarizationServiceStarted = false;
+    private boolean generatingSummary = false;
 
     public static DetailFragment newInstance(Ideas_table idea) {
         DetailFragment fragment = new DetailFragment();
@@ -228,7 +229,9 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
 
                 // Start the transcription service
                 Intent intent = new Intent(requireContext(), SummarizeService.class);
+                intent.putExtra("isTextIdea", isTextIdea);
                 intent.putExtra("transcriptFilePath", transcriptFilePath);
+                intent.putExtra("notesFilePath", textFilePath);
                 intent.putExtra("id", thisIdea.id);
                 requireContext().startForegroundService(intent);
             }
@@ -293,6 +296,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
         if (fileCache.containsKey(fileType)) {
             binding.EmptyFileText.setVisibility(View.GONE);
             binding.startServiceButton.setVisibility(View.GONE);
+            binding.SummaryTempText.setVisibility(View.GONE);
 
             ignoreTextChanges = true;
             binding.editableTextArea.setText(fileCache.get(fileType));
@@ -304,6 +308,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
         } else if (filePath != null) { // If the text file is available but not in cache
             binding.EmptyFileText.setVisibility(View.GONE);
             binding.startServiceButton.setVisibility(View.GONE);
+            binding.SummaryTempText.setVisibility(View.GONE);
             // Open the file and show the text in the editableTextArea
             StringBuilder text = getStringBuilder(filePath);
 
@@ -695,7 +700,17 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
     }
 
     @Override
-    public void onSummarizationProgress() {
+    public void onSummarizationProgress(String partialResult) {
+        requireActivity().runOnUiThread(() -> {
+            Log.d("DetailFragmentCallback", "Summarization progress callback: " + partialResult);
+            TextView summaryTempText = binding.getRoot().findViewById(R.id.SummaryTempText);
+
+            generatingSummary = true;
+            isTranscribeServiceBound = true;
+            binding.getRoot().findViewById(R.id.EmptyFileText).setVisibility(View.GONE);
+            summaryTempText.setVisibility(View.VISIBLE);
+            summaryTempText.setText(partialResult);
+        });
 
     }
 
@@ -710,6 +725,7 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
                 showTextFiles(summaryFilePath, "summary");
             }
 
+            generatingSummary = false;
             isSummarizationServiceStarted = false;
         });
     }

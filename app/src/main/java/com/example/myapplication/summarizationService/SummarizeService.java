@@ -4,7 +4,6 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
@@ -15,7 +14,9 @@ import androidx.room.Room;
 
 import com.example.myapplication.database.AppDatabase;
 import com.example.myapplication.database.IdeasDao;
-import com.google.mediapipe.tasks.genai.llminference.LlmInference;
+import com.google.mediapipe.tasks.core.Delegate;
+import com.google.mediapipe.tasks.genai.llminference.*;
+import com.google.mediapipe.tasks.core.BaseOptions;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -34,7 +35,12 @@ public class SummarizeService extends Service {
     private SummarizationCallback callback;
     private int id;
     private String transcriptFilePath;
+    private String textFilePath;
+    private boolean isTextIdea;
     private String summaryFilePath;
+    private LlmInference llmInference;
+    private LlmInferenceSession llmInferenceSession;
+    private String summary;
 
 
 
@@ -45,8 +51,8 @@ public class SummarizeService extends Service {
     }
 
     public interface SummarizationCallback {
-        void onSummarizationProgress();
-        void onSummarizationComplete(String transcriptFilePath);
+        void onSummarizationProgress(String partialResult);
+        void onSummarizationComplete(String summaryFilePath);
         void onSummarizationError(String error);
     }
 
@@ -57,13 +63,14 @@ public class SummarizeService extends Service {
         if (intent != null) {
             id = intent.getIntExtra("id", -1);
             transcriptFilePath = intent.getStringExtra("transcriptFilePath");
+            textFilePath = intent.getStringExtra("textFilePath");
+            isTextIdea = intent.getBooleanExtra("isTextIdea", false);
         }
 
         // Start summarization
-        if (transcriptFilePath != null) {
-            Log.d(TAG, "Starting transcription...");
-            startSummarization(transcriptFilePath);
-        }
+        Log.d(TAG, "Starting summarization...");
+        startSummarization(transcriptFilePath, textFilePath, isTextIdea);
+
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -79,67 +86,97 @@ public class SummarizeService extends Service {
         this.callback = callback;
     }
 
-    public void startSummarization(String transcriptPath) {
+    public void startSummarization(String transcriptPath, String textPath, boolean isTextIdea) {
         executor.execute(() -> {
             try {
-                String summary = SummarizeTranscript(transcriptPath);
-                Log.d(TAG, "Summarization complete: " + summary);
-//                saveSummary(summary);
-                if (callback != null) {
-                    updateNotification("Summarization complete! ");
-                    callback.onSummarizationComplete(transcriptFilePath);
-                }
+                SummarizeIdea(transcriptPath, textPath, isTextIdea);
                 stopSelf();
             } catch (Exception e) {
                 Log.e(TAG, "Summarization error", e);
                 if (callback != null) {
-                    callback.onSummarizationComplete(transcriptFilePath);
+                    callback.onSummarizationError(String.valueOf(e));
                 }
                 stopSelf(); // stop service either way
             }
         });
     }
 
-    private String SummarizeTranscript(String transcriptPath) {
-        updateNotification("Summarizing transcript...");
+    private void SummarizeIdea(String transcriptPath, String textPath, boolean isTextIdea) {
+        updateNotification("Summarizing idea...");
 
-        String transcript = getTranscriptText(transcriptPath);
+        Log.d(TAG, "Files: " + transcriptPath + ", " + textPath);
+
+        String transcript = "";
+        String userText = "";
+
+        if (transcriptPath != null) {
+            transcript = getText(transcriptPath);
+        }
+
+        if (textPath != null) {
+            userText = getText(textPath);
+        }
 
         String modelPath = "/data/local/tmp/llm_model/gemma2-2b-it-cpu-int8.task";
-        String modelName = "gemma-2-2b-it-cpu-int8.task";
 
-        String summarizationPrompt = "Summarize the following text: ";
+        String summarizationPrompt = "Generate a detailed summary of the following idea by the user. " +
+                "An idea may contain a voice transcription and the user's written note." +
+                "List out the key information in point form. " +
+                "Only generate the summary, nothing else. Start the message with **Summary**. " +
+                "Your message will be directly used in a summary text file. Be mindful of the formatting requirements. \n";
+        if (!isTextIdea) summarizationPrompt += "Transcription of voice note:\n" + userText + "\n";
+        summarizationPrompt += "User's written note: " + transcript;
 
-        String results = null;
+        StringBuilder results = new StringBuilder();
+
+        BaseOptions baseOptions = BaseOptions.builder()
+                .setModelAssetPath(modelPath)
+                .setDelegate(Delegate.GPU)
+                .build();
 
         LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(modelPath)
                 .setMaxTokens(1024)
-                .setResultListener( (partialResult, done) ->
-                        Log.d("SummarizationService", "Partial result: " + partialResult))
+                .setResultListener((partialResult, done) -> {
+                    results.append(partialResult);
+                    if (done) {
+                        Log.d(TAG, "Complete result: " + results);
+                        summary = results.toString();
+                        Log.d(TAG, "Summarization complete: " + summary);
+                        saveSummary(summary);
+                    } else {
+                        Log.d(TAG, "Partial result: " + results);
+                        callback.onSummarizationProgress(results.toString());
+                    }
+                })
                 .build();
 
-        Log.d(TAG, "Summarization prompt: " + summarizationPrompt + transcript);
+        LlmInferenceSession.LlmInferenceSessionOptions sessionOption = LlmInferenceSession.LlmInferenceSessionOptions.builder()
+                .setTemperature(0.6f)
+                .setTopK(40)
+                .setTopP(0.9f)
+                .setRandomSeed(101)
+                .build();
 
         try {
             Log.d(TAG, "Creating LLM inference...");
-            LlmInference llmInference = LlmInference.createFromOptions(getApplicationContext(), options);
+            llmInference = LlmInference.createFromOptions(getApplicationContext(), options);
+
+            llmInferenceSession = LlmInferenceSession.createFromOptions(llmInference, sessionOption);
 
             Log.d(TAG, "Generating response...");
-            results = llmInference.generateResponse(summarizationPrompt + transcript);
+            llmInferenceSession.addQueryChunk(summarizationPrompt);
+            llmInferenceSession.generateResponseAsync();
 
-            Log.d(TAG, "Summarization results: " + results);
-
-            return results;
 
         } catch (Exception e) {
             Log.e(TAG, "Error creating LLM inference", e);
-            return null;
         }
+
     }
 
-    private String getTranscriptText(String transcriptPath) {
-        Log.d(TAG, "Reading transcript file: " + transcriptPath);
+    private String getText(String transcriptPath) {
+        Log.d(TAG, "Reading file: " + transcriptPath);
 
         File transcriptFile = new File(transcriptPath);
         StringBuilder transcript = new StringBuilder();
@@ -150,10 +187,10 @@ public class SummarizeService extends Service {
                 transcript.append(line).append("\n");
             }
             reader.close();
-            Log.d(TAG, "Transcript: " + transcript);
+            Log.d(TAG, "Text: " + transcript);
             return transcript.toString();
         } catch (Exception e) {
-            Log.e(TAG, "Error reading transcript file", e);
+            Log.e(TAG, "Error reading text file", e);
         }
         return "";
     }
@@ -177,11 +214,24 @@ public class SummarizeService extends Service {
             writer.close();
             Log.d(TAG, "Saved summary to file: " + summaryFilePath);
 
-            // Update database
-            new Thread (() -> {
-                ideasDao.updateSummary(id, summaryFilePath);
-                Log.d(TAG, "Updated summary in database: " + id);
-            }).start();
+            // Update database and wait for completion
+            executor.execute(() -> {
+                try {
+                    ideasDao.updateSummary(id, summaryFilePath);
+                    Log.d(TAG, "Updated summary in database: " + id);
+
+                    // Only notify callback after database update is complete
+                    if (callback != null) {
+                        updateNotification("Summarization complete!");
+                        callback.onSummarizationComplete(summaryFilePath);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error updating database", e);
+                    if (callback != null) {
+                        callback.onSummarizationError("Failed to update database: " + e.getMessage());
+                    }
+                }
+            });
 
         } catch (IOException e) {
             Log.e(TAG, "Error saving summary", e);
