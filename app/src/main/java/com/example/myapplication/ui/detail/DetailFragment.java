@@ -227,12 +227,13 @@ public class DetailFragment extends Fragment implements TranscribeService.Transc
                 Intent bindIntent = new Intent(requireContext(), SummarizeService.class);
                 requireContext().bindService(bindIntent, serviceConnectionSummarize, Context.BIND_AUTO_CREATE);
 
-                // Start the transcription service
+                // Start the summarization service
                 Intent intent = new Intent(requireContext(), SummarizeService.class);
                 intent.putExtra("isTextIdea", isTextIdea);
                 intent.putExtra("transcriptFilePath", transcriptFilePath);
-                intent.putExtra("notesFilePath", textFilePath);
+                intent.putExtra("textFilePath", textFilePath);
                 intent.putExtra("id", thisIdea.id);
+
                 requireContext().startForegroundService(intent);
             }
 

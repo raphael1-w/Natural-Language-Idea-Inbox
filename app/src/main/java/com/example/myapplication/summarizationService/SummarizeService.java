@@ -118,6 +118,7 @@ public class SummarizeService extends Service {
         }
 
         String modelPath = "/data/local/tmp/llm_model/gemma2-2b-it-cpu-int8.task";
+        String modelPathGPU = "/data/local/tmp/llm_model/gemma2-2b-it-gpu-int8.bin";
 
         String summarizationPrompt = "Generate a detailed summary of the following idea by the user. " +
                 "An idea may contain a voice transcription and the user's written note." +
@@ -130,12 +131,12 @@ public class SummarizeService extends Service {
         StringBuilder results = new StringBuilder();
 
         BaseOptions baseOptions = BaseOptions.builder()
-                .setModelAssetPath(modelPath)
+                .setModelAssetPath(modelPathGPU)
                 .setDelegate(Delegate.GPU)
                 .build();
 
         LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(modelPath)
+                .setModelPath(modelPathGPU)
                 .setMaxTokens(1024)
                 .setResultListener((partialResult, done) -> {
                     results.append(partialResult);
