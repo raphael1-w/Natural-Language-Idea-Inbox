@@ -15,6 +15,7 @@ import androidx.room.Room;
 import com.example.myapplication.database.AppDatabase;
 import com.example.myapplication.database.IdeasDao;
 import com.google.mediapipe.tasks.core.Delegate;
+import com.google.mediapipe.tasks.core.proto.BaseOptionsProto;
 import com.google.mediapipe.tasks.genai.llminference.*;
 import com.google.mediapipe.tasks.core.BaseOptions;
 
@@ -23,6 +24,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -130,13 +132,13 @@ public class SummarizeService extends Service {
 
         StringBuilder results = new StringBuilder();
 
-        BaseOptions baseOptions = BaseOptions.builder()
-                .setModelAssetPath(modelPathGPU)
-                .setDelegate(Delegate.GPU)
-                .build();
+//        BaseOptions baseOptions = BaseOptions.builder()
+//                .setDelegate(Delegate.GPU)
+//                .setModelAssetPath(modelPathGPU)
+//                .build();
 
         LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(modelPathGPU)
+                .setModelPath(modelPath)
                 .setMaxTokens(1024)
                 .setResultListener((partialResult, done) -> {
                     results.append(partialResult);
@@ -147,7 +149,9 @@ public class SummarizeService extends Service {
                         saveSummary(summary);
                     } else {
                         Log.d(TAG, "Partial result: " + results);
-                        callback.onSummarizationProgress(results.toString());
+                        if (callback != null) {
+                            callback.onSummarizationProgress(results.toString());
+                        }
                     }
                 })
                 .build();
