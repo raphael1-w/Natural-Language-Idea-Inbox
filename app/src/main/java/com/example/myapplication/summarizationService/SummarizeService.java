@@ -122,13 +122,12 @@ public class SummarizeService extends Service {
         String modelPath = "/data/local/tmp/llm_model/gemma2-2b-it-cpu-int8.task";
         String modelPathGPU = "/data/local/tmp/llm_model/gemma2-2b-it-gpu-int8.bin";
 
-        String summarizationPrompt = "Generate a detailed summary of the following idea by the user. " +
-                "An idea may contain a voice transcription and the user's written note." +
+        String summarizationPrompt = "Generate a summary of the following idea by the user. " +
                 "List out the key information in point form. " +
                 "Only generate the summary, nothing else. Start the message with **Summary**. " +
-                "Your message will be directly used in a summary text file. Be mindful of the formatting requirements. \n";
-        if (!isTextIdea) summarizationPrompt += "Transcription of voice note:\n" + userText + "\n";
-        summarizationPrompt += "User's written note: " + transcript;
+                "Your message will be directly used in a summary text file. Be mindful of the formatting requirements. Do not make up information. \n";
+        if (!isTextIdea) summarizationPrompt += "Transcription of voice idea:\n" + transcript + "\n";
+        summarizationPrompt += "User's written idea: " + userText;
 
         StringBuilder results = new StringBuilder();
 
@@ -169,10 +168,9 @@ public class SummarizeService extends Service {
 
             llmInferenceSession = LlmInferenceSession.createFromOptions(llmInference, sessionOption);
 
-            Log.d(TAG, "Generating response...");
+            Log.d(TAG, "Generating response, prompt: " + summarizationPrompt);
             llmInferenceSession.addQueryChunk(summarizationPrompt);
             llmInferenceSession.generateResponseAsync();
-
 
         } catch (Exception e) {
             Log.e(TAG, "Error creating LLM inference", e);
@@ -207,8 +205,8 @@ public class SummarizeService extends Service {
         AppDatabase db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "app-database").build();
         IdeasDao ideasDao = db.ideasDao();
 
-        summaryFilePath = transcriptFilePath.replace("transcripts", "summaries")
-                .replace("_transcript.txt", "_summary.txt");
+        summaryFilePath = textFilePath.replace("texts", "summaries")
+                .replace("_text.txt", "_summary.txt");
 
         File summaryFile = new File(summaryFilePath);
         try {
@@ -240,6 +238,9 @@ public class SummarizeService extends Service {
 
         } catch (IOException e) {
             Log.e(TAG, "Error saving summary", e);
+
+            // Retry saving summary
+            saveSummary(summary);
         }
     }
 
